@@ -1,0 +1,245 @@
+.App {
+  font-family: 'Open Sans', sans-serif;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+nav {
+  background-color: #34495e; /* Darker blue-grey for navigation bar */
+  padding: 15px 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* More pronounced shadow for depth */
+  position: relative; /* Added for dropdown positioning */
+  z-index: 1000; /* Ensure navbar is above other content */
+}
+
+.navbar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-title {
+  font-family: 'Montserrat', sans-serif;
+  color: #ecf0f1; /* Lighter color for title for contrast */
+  display: flex; /* Make it a flex container */
+  flex-direction: column; /* Stack children vertically */
+  align-items: flex-start; /* Align text to the left */
+  line-height: 1.2; /* Adjust line height for stacked text */
+}
+
+.app-title-main {
+  font-size: 2.2em; /* Larger font size for main title */
+  font-weight: 700;
+  letter-spacing: 1px; /* Increased letter spacing */
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.app-title-subtitle {
+  font-size: 0.8em; /* Smaller font size for subtitle */
+  font-weight: 400;
+  opacity: 0.8; /* Slightly less opaque for subtle effect */
+  margin-top: 2px; /* Small space between main title and subtitle */
+}
+
+nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 30px;
+}
+
+nav li a {
+  display: block;
+  color: #ecf0f0; /* Light color for navigation links */
+  text-align: center;
+  padding: 10px 18px; /* Slightly more horizontal padding */
+  text-decoration: none;
+  font-weight: 600; /* Bolder navigation links */
+  transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease; /* Added transform */
+  border-radius: 5px;
+}
+
+nav li a:hover,
+nav li a.active {
+  background-color: #007bff; /* Vibrant blue on hover/active */
+  color: white;
+  transform: translateY(-2px); /* Lift effect on hover */
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+}
+
+/* Dropdown Styles */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-content {
+  display: none; /* Hidden by default */
+  position: absolute;
+  background-color: #34495e; /* Same as navbar for seamless look */
+  min-width: 200px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1; /* Stay on top */
+  border-radius: 5px;
+  padding: 10px 0;
+  top: 100%; /* Position below the parent link */
+  left: 0;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block; /* Show on hover */
+}
+
+.dropdown-content a {
+  color: #ecf0f0; /* Light color for dropdown links */
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-weight: 400; /* Regular weight for dropdown items */
+}
+
+.dropdown-content a:hover {
+  background-color: #007bff; /* Highlight on hover */
+  color: white;
+}
+
+.content {
+  flex-grow: 1;
+  padding: 30px 20px;
+  background-color: #ffffff;
+  border-radius: 10px; /* Slightly more rounded corners for content area */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08); /* More prominent shadow for depth */
+  margin-top: 30px; /* More space from navigation */
+  margin-bottom: 30px;
+}
+
+/* Form and table specific styles - kept largely consistent from previous iteration, inheriting from index.css */
+form {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+form div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+form label {
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+form input[type="text"],
+form input[type="number"],
+form input[type="date"],
+form select {
+  width: 180px;
+  padding: 7px 9px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.95em;
+  box-sizing: border-box;
+}
+
+form button[type="submit"] {
+  margin-top: 15px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 25px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table th,
+table td {
+  border: 1px solid #e0e0e0; /* Slightly darker border for table cells */
+  padding: 12px 15px;
+  text-align: left;
+}
+
+table th {
+  background-color: #e9ecef; /* Lighter background for table headers */
+  font-weight: 600;
+  color: #343a40; /* Darker text for headers */
+}
+
+table tr:nth-child(even) {
+  background-color: #f8f9fa; /* Lighter zebra striping */
+}
+
+table tr:hover {
+  background-color: #e2e6ea; /* More noticeable hover for rows */
+}
+
+/* --- Configuration Page Specific Styles --- */
+/* Reduce spacing for list items */
+.config-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.config-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Smaller buttons for actions like delete */
+.icon-button {
+  background: none;
+  border: none;
+  color: #dc3545; /* Bootstrap danger red */
+  cursor: pointer;
+  font-size: 1.2em; /* Adjust icon size */
+  padding: 5px; /* Smaller padding */
+  margin-left: 5px;
+  transition: color 0.2s ease;
+}
+
+.icon-button:hover {
+  color: #c82333;
+}
+
+/* Adjust form input/select for configuration page */
+.config-form input[type="text"],
+.config-form select {
+  width: auto; /* Allow elements to size naturally based on content */
+  flex-grow: 1; /* Allow them to grow if in a flex container */
+  margin-right: 10px; /* Space between input and select */
+}
+
+.config-form button {
+  padding: 8px 15px; /* Smaller padding for form buttons */
+  font-size: 0.9em;
+}
+
+.config-section ul {
+  padding-left: 0;
+}
+
+.config-section h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
