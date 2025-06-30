@@ -304,8 +304,8 @@ const Configuration = () => {
                                 value={newNonEvaluableCriterion.inputType}
                                 onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, inputType: e.target.value })}
                             >
-                                <option value="text">Texto</option>
-                                <option value="select">Desplegable</option>
+                                <option value="text">General</option>
+                                <option value="select">Menú Desplegable</option>
                             </select>
                         </div>
                         {newNonEvaluableCriterion.inputType === 'select' && (
