@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, runTransaction } from 'firebase/firestore';
 
 const Configuration = () => {
   // Estados
@@ -16,22 +16,22 @@ const Configuration = () => {
   const [newFieldName, setNewFieldName] = useState('');
   const [newExecutiveData, setNewExecutiveData] = useState({});
 
-  // Función centralizada para cargar todos los datos de forma segura
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (!loading) setLoading(true);
     try {
-      // Paso 1: Verificar y crear los campos de ejecutivo si no existen.
       const fieldsRef = collection(db, 'executiveFields');
       const fieldsSnapshotBefore = await getDocs(fieldsRef);
       if (fieldsSnapshotBefore.empty) {
-        const defaultFields = [{ name: 'Nombre' }, { name: 'Cargo' }, { name: 'Área' }];
-        // Usamos Promise.all para asegurar que todos los campos se creen antes de continuar.
+        const defaultFields = [
+          { name: 'Nombre', order: 1 }, 
+          { name: 'Cargo', order: 2 }, 
+          { name: 'Área', order: 3 }
+        ];
         await Promise.all(defaultFields.map(field => addDoc(fieldsRef, field)));
       }
 
-      // Paso 2: Cargar todos los datos de la base de datos.
       const criteriaQuery = query(collection(db, 'criteria'), orderBy('name'));
-      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('name'));
+      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('order'));
       const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
 
       const [criteriaSnapshot, fieldsSnapshot, executivesSnapshot] = await Promise.all([
@@ -40,12 +40,9 @@ const Configuration = () => {
         getDocs(executivesQuery),
       ]);
 
-      // Paso 3: Actualizar el estado de React con los datos de Firestore.
       const fieldsList = fieldsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const initialExecData = {};
-      fieldsList.forEach(field => {
-        initialExecData[field.name] = '';
-      });
+      fieldsList.forEach(field => { initialExecData[field.name] = ''; });
 
       setCriteria(criteriaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setExecutiveFields(fieldsList);
@@ -58,41 +55,67 @@ const Configuration = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
-
-  // --- Manejadores de eventos (Añadir/Borrar) ---
-  const handleAdd = async (collectionName, data) => {
-    try {
-      await addDoc(collection(db, collectionName), data);
-      await fetchData(); // Recargar todos los datos para mantener consistencia.
-    } catch (err) {
-      console.error(`Error al añadir en ${collectionName}:`, err);
-    }
-  };
+  }, []); // Se ejecuta solo una vez
 
   const handleDelete = async (collectionName, id) => {
-    try {
-      await deleteDoc(doc(db, collectionName, id));
-      await fetchData(); // Recargar todos los datos.
-    } catch (err) {
-      console.error(`Error al eliminar de ${collectionName}:`, err);
-    }
+    await deleteDoc(doc(db, collectionName, id));
+    await fetchData();
+  };
+  
+  const handleAddCriterion = async (e) => {
+    e.preventDefault();
+    if (!newCriterionName.trim()) return;
+    await addDoc(collection(db, 'criteria'), { name: newCriterionName, section: newCriterionType });
+    setNewCriterionName('');
+    await fetchData();
+  };
+  
+  const handleAddField = async (e) => {
+    e.preventDefault();
+    if (!newFieldName.trim()) return;
+    const nextOrder = executiveFields.length > 0 ? Math.max(...executiveFields.map(f => f.order)) + 1 : 1;
+    await addDoc(collection(db, 'executiveFields'), { name: newFieldName, order: nextOrder });
+    setNewFieldName('');
+    await fetchData();
   };
 
-  const handleAddCriterion = (e) => { e.preventDefault(); if (!newCriterionName.trim()) return; handleAdd('criteria', { name: newCriterionName, section: newCriterionType }); setNewCriterionName(''); };
-  const handleAddField = (e) => { e.preventDefault(); if (!newFieldName.trim()) return; handleAdd('executiveFields', { name: newFieldName }); setNewFieldName(''); };
-  const handleAddExecutive = (e) => { e.preventDefault(); if (Object.values(newExecutiveData).some(val => !String(val).trim())) { alert("Por favor, completa todos los campos."); return; } handleAdd('executives', newExecutiveData); };
+  const handleAddExecutive = async (e) => {
+    e.preventDefault();
+    if (Object.values(newExecutiveData).some(val => !String(val).trim())) {
+      alert("Por favor, completa todos los campos.");
+      return;
+    }
+    await addDoc(collection(db, 'executives'), newExecutiveData);
+    await fetchData();
+  };
+
+  const handleReorder = async (index, direction) => {
+    const newFields = [...executiveFields];
+    const itemToMove = newFields[index];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    const itemToSwapWith = newFields[swapIndex];
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const doc1Ref = doc(db, 'executiveFields', itemToMove.id);
+        const doc2Ref = doc(db, 'executiveFields', itemToSwapWith.id);
+        transaction.update(doc1Ref, { order: itemToSwapWith.order });
+        transaction.update(doc2Ref, { order: itemToMove.order });
+      });
+      await fetchData();
+    } catch (e) { console.error("Fallo al reordenar:", e); }
+  };
 
   if (loading) return <p style={{padding: '20px'}}>Cargando configuración...</p>;
   if (error) return <p style={{padding: '20px'}}>{error}</p>;
 
   return (
     <div style={{ padding: '20px', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-      {/* Sección Criterios */}
+      {/* Sección 1: Gestionar Criterios */}
       <div style={sectionStyle}>
         <h2>Gestionar Criterios</h2>
         <form onSubmit={handleAddCriterion} style={formStyle}>
@@ -106,17 +129,30 @@ const Configuration = () => {
         <ul style={listStyle}>{criteria.map(c => <li key={c.id} style={listItemStyle}><span>{c.name} <em>({c.section})</em></span><button onClick={() => handleDelete('criteria', c.id)} style={deleteButtonStyle}>X</button></li>)}</ul>
       </div>
 
-      {/* Sección Campos de Ejecutivo */}
+      {/* Sección 2: Gestionar Campos de Ejecutivo */}
       <div style={sectionStyle}>
         <h2>Gestionar Campos de Ejecutivo</h2>
         <form onSubmit={handleAddField} style={formStyle}>
           <input type="text" value={newFieldName} onChange={(e) => setNewFieldName(e.target.value)} placeholder="Nombre del nuevo campo" style={inputStyle}/>
           <button type="submit" style={buttonStyle}>Añadir Campo</button>
         </form>
-        <ul style={listStyle}>{executiveFields.map(f => <li key={f.id} style={listItemStyle}><span>{f.name}</span>{!['Nombre', 'Cargo', 'Área'].includes(f.name) && (<button onClick={() => handleDelete('executiveFields', f.id)} style={deleteButtonStyle}>X</button>)}</li>)}</ul>
+        <ul style={listStyle}>
+          {executiveFields.map((field, index) => (
+            <li key={field.id} style={listItemStyle}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <div style={{display: 'flex', flexDirection: 'column'}}>
+                  <button style={arrowButtonStyle} disabled={index === 0} onClick={() => handleReorder(index, 'up')}>▲</button>
+                  <button style={arrowButtonStyle} disabled={index === executiveFields.length - 1} onClick={() => handleReorder(index, 'down')}>▼</button>
+                </div>
+                <span>{field.name}</span>
+              </div>
+              {!['Nombre', 'Cargo', 'Área'].includes(field.name) && (<button onClick={() => handleDelete('executiveFields', field.id)} style={deleteButtonStyle}>X</button>)}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Sección Ejecutivos */}
+      {/* Sección 3: Gestionar Ejecutivos */}
       <div style={sectionStyle}>
         <h2>Gestionar Ejecutivos</h2>
         <form onSubmit={handleAddExecutive} style={formStyle}>
@@ -139,5 +175,6 @@ const buttonStyle = { padding: '10px 15px', background: '#007bff', color: 'white
 const listStyle = { listStyle: 'none', padding: 0 };
 const listItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderBottom: '1px solid #ccc' };
 const deleteButtonStyle = { background: 'red', color: 'white', border: 'none', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '50%' };
+const arrowButtonStyle = { background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 5px', lineHeight: '1' };
 
 export default Configuration;

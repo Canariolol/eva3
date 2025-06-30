@@ -30,10 +30,11 @@ const Team = () => {
   const fetchTeamData = async () => {
     setLoading(true);
     try {
-      // Cargar campos de ejecutivo
-      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('name'));
+      // FIX 1: Cargar campos de ejecutivo ordenados por el campo 'order'
+      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('order'));
       const fieldsSnapshot = await getDocs(fieldsQuery);
-      setExecutiveFields(fieldsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const fieldsList = fieldsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setExecutiveFields(fieldsList);
 
       // Cargar ejecutivos
       const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
@@ -66,7 +67,7 @@ const Team = () => {
       await addDoc(collection(db, 'executives'), newExecutiveData);
       setNewExecutiveData({});
       setIsAddModalOpen(false);
-      fetchTeamData(); // Recargar todo
+      fetchTeamData();
     } catch (err) {
       console.error("Error al añadir ejecutivo:", err);
     }
@@ -78,7 +79,7 @@ const Team = () => {
     try {
       const historyQuery = query(
         collection(db, 'evaluations'),
-        where('executive', '==', executive.Nombre), // Asegurarse que se busca por el campo 'Nombre'
+        where('executive', '==', executive.Nombre),
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(historyQuery);
@@ -130,7 +131,22 @@ const Team = () => {
       {selectedExecutive && (
         <Modal onClose={() => setSelectedExecutive(null)}>
           <h2>Historial de {selectedExecutive.Nombre}</h2>
-          {/* ...código del historial sin cambios... */}
+          {/* FIX 2: Restaurar el código para mostrar el historial */}
+          {historyLoading ? <p>Cargando historial...</p> : (
+            history.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
+                {history.map(item => (
+                  <li key={item.id} style={historyItemStyle}>
+                    <div>
+                      <span style={{display: 'block', fontSize: '0.9em', color: '#666'}}>{item.date}</span>
+                      <strong>{item.criterion}</strong>
+                    </div>
+                    <span style={scoreStyle}>{item.score}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>No hay evaluaciones registradas para este ejecutivo.</p>
+          )}
         </Modal>
       )}
 
@@ -160,5 +176,7 @@ const inputStyle = { width: '100%', padding: '8px', boxSizing: 'border-box', mar
 const modalBackdropStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
 const modalContentStyle = { background: 'white', padding: '20px', borderRadius: '8px', width: '90%', maxWidth: '500px', position: 'relative' };
 const closeButtonStyle = { position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer' };
+const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee' };
+const scoreStyle = { fontWeight: 'bold', background: '#007bff', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.9em' };
 
 export default Team;
