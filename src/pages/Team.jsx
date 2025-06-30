@@ -3,9 +3,9 @@ import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const Modal = ({ children, onClose }) => (
+const Modal = ({ children, onClose, size = 'default' }) => (
     <div className="modal-backdrop">
-        <div className="modal-content" style={{maxWidth: '800px'}}>
+        <div className="modal-content" style={{ maxWidth: size === 'large' ? '800px' : '500px' }}>
             <button onClick={onClose} className="modal-close-btn">&times;</button>
             {children}
         </div>
@@ -18,6 +18,7 @@ const Team = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedExecutive, setSelectedExecutive] = useState(null);
+    const [selectedEvaluation, setSelectedEvaluation] = useState(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -42,10 +43,6 @@ const Team = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    const handleSelectExecutive = (executive) => {
-        setSelectedExecutive(executive);
-    };
     
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
@@ -114,7 +111,7 @@ const Team = () => {
                 <h3 style={{marginTop: '3rem'}}>Historial de Evaluaciones</h3>
                 <ul className="config-list">
                     {executiveEvals.map(ev => (
-                        <li key={ev.id} className="config-list-item">
+                        <li key={ev.id} className="config-list-item" onClick={() => setSelectedEvaluation(ev)} style={{cursor: 'pointer'}}>
                             <div>
                                 <strong style={{display: 'block'}}>{ev.section}</strong>
                                 <span style={{fontSize: '0.9rem', color: '#666'}}>
@@ -131,6 +128,42 @@ const Team = () => {
         );
     };
 
+    const renderEvaluationDetailModal = () => {
+        if (!selectedEvaluation) return null;
+
+        return (
+            <Modal onClose={() => setSelectedEvaluation(null)}>
+                <h2>Detalle de la Evaluación</h2>
+                <p><strong>Fecha:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
+                <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
+                
+                <h4 style={{marginTop: '2rem'}}>Puntajes</h4>
+                <ul className='config-list'>
+                    {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
+                        <li key={name} className='config-list-item'>
+                            <span>{name}</span>
+                            <span style={{fontWeight: 'bold'}}>{score}</span>
+                        </li>
+                    ))}
+                </ul>
+                
+                {selectedEvaluation.nonEvaluableData && Object.keys(selectedEvaluation.nonEvaluableData).length > 0 && (
+                    <>
+                        <h4 style={{marginTop: '2rem'}}>Datos Adicionales</h4>
+                        <ul className='config-list'>
+                           {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
+                                <li key={name} className='config-list-item'>
+                                    <span>{name}</span>
+                                    <span>{value}</span>
+                                </li>
+                           ))}
+                        </ul>
+                    </>
+                )}
+            </Modal>
+        )
+    }
+
     if (loading) return <h1>Cargando...</h1>;
     if (error) return <h1>{error}</h1>;
 
@@ -142,7 +175,7 @@ const Team = () => {
             </p>
             <div className="team-grid" style={{marginTop: '2rem'}}>
                 {executives.map(exec => (
-                    <div key={exec.id} className="card team-card" onClick={() => handleSelectExecutive(exec)}>
+                    <div key={exec.id} className="card team-card" onClick={() => setSelectedExecutive(exec)}>
                         <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
                         <h2>{exec.Nombre}</h2>
                         <p>{exec.Cargo || 'N/A'}</p>
@@ -151,10 +184,12 @@ const Team = () => {
             </div>
 
             {selectedExecutive && (
-                <Modal onClose={() => setSelectedExecutive(null)}>
+                <Modal onClose={() => setSelectedExecutive(null)} size="large">
                     {renderExecutiveDetails()}
                 </Modal>
             )}
+
+            {renderEvaluationDetailModal()}
         </>
     );
 };

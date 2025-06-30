@@ -36,21 +36,80 @@ const processDataForLineChart = (evaluations, dateField = 'date') => {
   });
 };
 
-const processDataForBarChart = (evaluations, section) => {
+const processDataForBarChart = (evaluations, section, criteriaConfig, chartState = null) => {
   const sectionEvaluations = evaluations.filter(e => e.section === section);
+
+  // New logic for transversal chart with drill-down
+  if (section === 'Aptitudes Transversales' && chartState) {
+    const { view, selectedSubsection } = chartState;
+    const criterionToSubsectionMap = criteriaConfig
+        .filter(c => c.section === 'Aptitudes Transversales')
+        .reduce((acc, c) => {
+            acc[c.name] = c.subsection || 'Sin Subsección';
+            return acc;
+        }, {});
+
+    switch (view) {
+        case 'byCriterion': {
+            const dataByCriterion = {};
+            sectionEvaluations.forEach(ev => {
+                Object.entries(ev.scores).forEach(([criterionName, score]) => {
+                    if (criterionToSubsectionMap[criterionName] === selectedSubsection) {
+                        if (!dataByCriterion[criterionName]) dataByCriterion[criterionName] = [];
+                        dataByCriterion[criterionName].push(score);
+                    }
+                });
+            });
+            return Object.entries(dataByCriterion).map(([name, scores]) => ({
+                name,
+                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
+            }));
+        }
+        case 'allCriteria': {
+            const dataByCriterion = {};
+             sectionEvaluations.forEach(ev => {
+                Object.entries(ev.scores).forEach(([criterionName, score]) => {
+                    if (!dataByCriterion[criterionName]) dataByCriterion[criterionName] = [];
+                    dataByCriterion[criterionName].push(score);
+                });
+            });
+             return Object.entries(dataByCriterion).map(([name, scores]) => ({
+                name,
+                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
+            }));
+        }
+        case 'bySubsection':
+        default: {
+            const dataBySubsection = {};
+            sectionEvaluations.forEach(ev => {
+                Object.entries(ev.scores).forEach(([criterionName, score]) => {
+                    const subsection = criterionToSubsectionMap[criterionName];
+                    if (subsection) {
+                        if (!dataBySubsection[subsection]) dataBySubsection[subsection] = [];
+                        dataBySubsection[subsection].push(score);
+                    }
+                });
+            });
+            return Object.entries(dataBySubsection).map(([name, scores]) => ({
+                name,
+                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
+            }));
+        }
+    }
+  }
+
+  // Original logic for other sections (e.g., Calidad de Desempeño)
   const dataByCriterion = sectionEvaluations.reduce((acc, curr) => {
     Object.entries(curr.scores).forEach(([criterion, score]) => {
-      if (!acc[criterion]) {
-        acc[criterion] = { criterion: criterion, scores: [] };
-      }
-      acc[criterion].scores.push(score);
+      if (!acc[criterion]) acc[criterion] = [];
+      acc[criterion].push(score);
     });
     return acc;
   }, {});
 
-  return Object.values(dataByCriterion).map(item => ({
-    name: item.criterion,
-    'Puntaje Promedio': item.scores.reduce((a, b) => a + b, 0) / item.scores.length,
+  return Object.entries(dataByCriterion).map(([name, scores]) => ({
+    name: name,
+    'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
   }));
 };
 
@@ -113,36 +172,32 @@ const COLORS = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1'
 
 const Dashboard = () => {
   const [evaluations, setEvaluations] = useState([]);
+  const [criteriaConfig, setCriteriaConfig] = useState([]);
   const [nonEvaluableCriteria, setNonEvaluableCriteria] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalData, setModalData] = useState([]);
   const [modalTitle, setModalTitle] = useState('');
+  const [transversalChartState, setTransversalChartState] = useState({ view: 'bySubsection', selectedSubsection: null });
 
   const fetchData = useCallback(async () => {
     try {
-      const evalsQuery = query(collection(db, 'evaluations'), orderBy('evaluationDate', 'asc'));
-      const nonEvalCritQuery = query(collection(db, 'nonEvaluableCriteria'));
-      
-      const [evalsSnapshot, nonEvalCritSnapshot] = await Promise.all([
-        getDocs(evalsQuery),
-        getDocs(nonEvalCritQuery)
+      const [evalsSnapshot, nonEvalCritSnapshot, criteriaSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'evaluations'), orderBy('evaluationDate', 'asc'))),
+        getDocs(query(collection(db, 'nonEvaluableCriteria'))),
+        getDocs(query(collection(db, 'criteria')))
       ]);
 
-      const fetchedEvals = evalsSnapshot.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          ...data,
-          date: data.evaluationDate?.toDate ? data.evaluationDate.toDate() : new Date(),
-          managementDate: data.managementDate?.toDate ? data.managementDate.toDate() : null,
-        };
-      });
+      const fetchedEvals = evalsSnapshot.docs.map(d => ({
+        id: d.id, ...d.data(),
+        date: d.data().evaluationDate?.toDate ? d.data().evaluationDate.toDate() : new Date(),
+        managementDate: d.data().managementDate?.toDate ? d.data().managementDate.toDate() : null,
+      }));
       setEvaluations(fetchedEvals);
 
-      const fetchedNonEvalCrit = nonEvalCritSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setNonEvaluableCriteria(fetchedNonEvalCrit);
+      setNonEvaluableCriteria(nonEvalCritSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCriteriaConfig(criteriaSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
     } catch (err) {
       console.error("Error al cargar los datos:", err);
@@ -155,6 +210,38 @@ const Dashboard = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  
+  const handleTransversalChartClick = (data) => {
+    if (!data || !data.activePayload || !data.activePayload.length) return;
+
+    const clickedItemName = data.activePayload[0].payload.name;
+
+    setTransversalChartState(currentState => {
+        switch (currentState.view) {
+            case 'bySubsection':
+                return { view: 'byCriterion', selectedSubsection: clickedItemName };
+            case 'byCriterion':
+                return { view: 'allCriteria', selectedSubsection: null };
+            case 'allCriteria':
+                return { view: 'bySubsection', selectedSubsection: null };
+            default:
+                return { view: 'bySubsection', selectedSubsection: null };
+        }
+    });
+  };
+
+  const getTransversalChartTitle = () => {
+    const { view, selectedSubsection } = transversalChartState;
+    switch(view) {
+        case 'byCriterion':
+            return `Detalle: ${selectedSubsection}`;
+        case 'allCriteria':
+            return 'Promedio por Criterio (Todos)';
+        case 'bySubsection':
+        default:
+            return 'Promedio por Subsección';
+    }
+  };
 
   const openModal = (data, title) => {
     setModalData(data);
@@ -174,20 +261,17 @@ const Dashboard = () => {
 
   const transversalEvaluations = evaluations.filter(e => e.section === 'Aptitudes Transversales');
   const transversalDataLine = processDataForLineChart(transversalEvaluations.filter(e => e.date).sort((a,b) => a.date - b.date), 'date');
-  const transversalDataBar = processDataForBarChart(evaluations, 'Aptitudes Transversales');
+  const transversalDataBar = processDataForBarChart(evaluations, 'Aptitudes Transversales', criteriaConfig, transversalChartState);
   const transversalNonEvaluable = processNonEvaluableData(transversalEvaluations, nonEvaluableCriteria, 'Aptitudes Transversales');
   const transversalExecutiveAverages = processExecutiveAverages(transversalEvaluations);
   
   const performanceEvaluations = evaluations.filter(e => e.section === 'Calidad de Desempeño');
   const performanceDataLine = processDataForLineChart(performanceEvaluations.filter(e => e.managementDate).sort((a,b) => a.managementDate - b.managementDate), 'managementDate');
-  const performanceDataBar = processDataForBarChart(evaluations, 'Calidad de Desempeño');
+  const performanceDataBar = processDataForBarChart(evaluations, 'Calidad de Desempeño', criteriaConfig);
   const performanceNonEvaluable = processNonEvaluableData(performanceEvaluations, nonEvaluableCriteria, 'Calidad de Desempeño');
   const performanceExecutiveAverages = processExecutiveAverages(performanceEvaluations);
 
-  const pluralize = (count, singular, plural) => {
-    if (count === 1) return singular;
-    return plural || `${singular}s`;
-  };
+  const pluralize = (count, singular, plural) => (count === 1 ? singular : plural || `${singular}s`);
 
   const renderExecutiveSummary = (averages, title) => (
     <div className="card" style={{ flex: 1 }}>
@@ -247,7 +331,19 @@ const Dashboard = () => {
         <h2>Aptitudes Transversales</h2>
         <div className="dashboard-grid">
           <div className="card"><h4>Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={transversalDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
-          <div className="card"><h4>Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={transversalDataBar}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, 10]} /><Tooltip /><Legend /><Bar dataKey="Puntaje Promedio" fill="var(--color-primary)" /></BarChart></ResponsiveContainer></div>
+          <div className="card">
+            <h4>{getTransversalChartTitle()}</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={transversalDataBar} onClick={handleTransversalChartClick}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis domain={[0, 10]} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Puntaje Promedio" fill="var(--color-primary)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
             {(transversalNonEvaluable.length > 0 || transversalEvaluations.length > 0) && (

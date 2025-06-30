@@ -4,8 +4,10 @@ import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
-import './App.css'; // Importa el archivo CSS
+import './App.css';
 import Footer from './components/Footer';
+import Header from './components/Header';
+import './components/Header.css';
 
 // Layout principal con la barra lateral de navegación
 const AppLayout = () => (
@@ -23,6 +25,7 @@ const AppLayout = () => (
       </ul>
     </nav>
     <div className="main-panel">
+      <Header />
       <main className="main-content">
         {/* Las páginas se renderizarán aquí */}
         <Outlet />
