@@ -1,61 +1,47 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink, Outlet } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
-import './App.css';
+import './App.css'; // Importa el archivo CSS
+
+// Layout principal con la barra lateral de navegación
+const AppLayout = () => (
+  <div className="app-layout">
+    <nav className="sidebar">
+      <div className="sidebar-header">
+        <h3>Eva3</h3>
+        <span>Evaluaciones, Calidad y Monitoreo</span>
+      </div>
+      <ul className="nav-list">
+        <li><NavLink to="/" end>Dashboard</NavLink></li>
+        <li><NavLink to="/team">Equipo</NavLink></li>
+        <li><NavLink to="/evaluate">Evaluar</NavLink></li>
+        <li><NavLink to="/configuration">Configuración</NavLink></li>
+      </ul>
+    </nav>
+    <main className="main-content">
+      {/* Las páginas se renderizarán aquí */}
+      <Outlet />
+    </main>
+  </div>
+);
 
 function App() {
-  const location = useLocation();
-  // Removed showEvaluateDropdown state as it's no longer needed for a dropdown
-
-  return (
-    <div className="App">
-      <nav>
-        <div className="navbar-content">
-          <div className="app-title">
-            <span className="app-title-main">Eva3</span>
-            <span className="app-title-subtitle">Evaluaciones, Calidad y Monitoreo</span>
-          </div>
-          <ul>
-            <li>
-              <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/team" className={location.pathname === '/team' ? 'active' : ''}>Equipo</Link>
-            </li>
-            <li>
-              <Link to="/evaluate" className={location.pathname.startsWith('/evaluate') ? 'active' : ''}>
-                Evaluar
-              </Link>
-              {/* Removed dropdown content */}
-            </li>
-            <li>
-              <Link to="/configuration" className={location.pathname === '/configuration' ? 'active' : ''}>Configuración</Link>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <div className="content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/evaluate" element={<Evaluate />} />
-          <Route path="/configuration" element={<Configuration />} />
-        </Routes>
-      </div>
-    </div>
-  );
-}
-
-function AppWrapper() {
   return (
     <Router>
-      <App />
+      <Routes>
+        {/* Todas las rutas anidadas usarán AppLayout */}
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="team" element={<Team />} />
+          <Route path="evaluate" element={<Evaluate />} />
+          <Route path="configuration" element={<Configuration />} />
+        </Route>
+      </Routes>
     </Router>
   );
 }
 
-export default AppWrapper;
+export default App;

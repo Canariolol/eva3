@@ -1,182 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
 
-// Componente Modal genérico
-const Modal = ({ children, onClose }) => (
-  <div style={modalBackdropStyle}>
-    <div style={modalContentStyle}>
-      <button onClick={onClose} style={closeButtonStyle}>X</button>
-      {children}
-    </div>
-  </div>
-);
+const Modal = ({ children, onClose }) => ( <div className="modal-backdrop"><div className="modal-content"><button onClick={onClose} className="modal-close-btn">&times;</button>{children}</div></div> );
 
 const Team = () => {
   const [executives, setExecutives] = useState([]);
   const [executiveFields, setExecutiveFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Estado para el modal de "Añadir Ejecutivo"
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newExecutiveData, setNewExecutiveData] = useState({});
-
-  // Estado para el modal de "Historial"
   const [selectedExecutive, setSelectedExecutive] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const fetchTeamData = async () => {
-    setLoading(true);
+  const fetchTeamData = useCallback(async () => {
     try {
-      // FIX 1: Cargar campos de ejecutivo ordenados por el campo 'order'
       const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('order'));
-      const fieldsSnapshot = await getDocs(fieldsQuery);
-      const fieldsList = fieldsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setExecutiveFields(fieldsList);
-
-      // Cargar ejecutivos
       const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
-      const querySnapshot = await getDocs(executivesQuery);
-      setExecutives(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const [fieldsSnapshot, executivesSnapshot] = await Promise.all([getDocs(fieldsQuery), getDocs(executivesQuery)]);
+      setExecutiveFields(fieldsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setExecutives(executivesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error(err);
       setError("No se pudo cargar la lista de ejecutivos.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTeamData();
-  }, []);
+  }, [fetchTeamData]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewExecutiveData({ ...newExecutiveData, [name]: value });
-  };
-
+  const handleInputChange = (e) => { setNewExecutiveData({ ...newExecutiveData, [e.target.name]: e.target.value }); };
+  
   const handleAddExecutive = async (e) => {
     e.preventDefault();
-    if (Object.values(newExecutiveData).some(val => !val || !val.trim())) {
-      alert("Por favor, completa todos los campos.");
-      return;
-    }
-    try {
-      await addDoc(collection(db, 'executives'), newExecutiveData);
-      setNewExecutiveData({});
-      setIsAddModalOpen(false);
-      fetchTeamData();
-    } catch (err) {
-      console.error("Error al añadir ejecutivo:", err);
-    }
+    if (Object.values(newExecutiveData).some(v => !String(v).trim())) { alert("Por favor, completa todos los campos."); return; }
+    await addDoc(collection(db, 'executives'), newExecutiveData);
+    setIsAddModalOpen(false);
+    setNewExecutiveData({});
+    fetchTeamData();
   };
 
   const handleViewHistory = async (executive) => {
     setSelectedExecutive(executive);
     setHistoryLoading(true);
     try {
-      const historyQuery = query(
-        collection(db, 'evaluations'),
-        where('executive', '==', executive.Nombre),
-        orderBy('date', 'desc')
-      );
+      const historyQuery = query(collection(db, 'evaluations'), where('executive', '==', executive.Nombre), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(historyQuery);
-      setHistory(querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate().toLocaleDateString(),
-      })));
-    } catch (err) {
-      console.error("Error al obtener el historial:", err);
-    } finally {
-      setHistoryLoading(false);
-    }
+      setHistory(querySnapshot.docs.map(d => ({ id: d.id, ...d.data(), date: d.data().date.toDate().toLocaleDateString() })));
+    } catch (err) { console.error("Error al obtener el historial:", err); } 
+    finally { setHistoryLoading(false); }
   };
 
-  if (loading) return <div style={containerStyle}><h1>Cargando equipo...</h1></div>;
-  if (error) return <div style={containerStyle}><h1>Error: {error}</h1></div>;
+  if (loading) return <h1>Cargando...</h1>;
+  if (error) return <h1>{error}</h1>;
 
   return (
-    <div style={containerStyle}>
-      <div style={headerStyle}>
-        <h1>Nuestro Equipo</h1>
-        <button onClick={() => setIsAddModalOpen(true)} style={buttonStyle}>Añadir Ejecutivo</button>
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <div><h1>Nuestro Equipo</h1><p style={{marginTop: '-10px', color: 'var(--color-secondary)'}}>Haz clic en un ejecutivo para ver su historial.</p></div>
+        <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary">Añadir Ejecutivo</button>
       </div>
-      <p>Haz clic en un ejecutivo para ver su historial de evaluaciones.</p>
-
-      {isAddModalOpen && (
-        <Modal onClose={() => setIsAddModalOpen(false)}>
-          <h2>Añadir Nuevo Ejecutivo</h2>
-          <form onSubmit={handleAddExecutive}>
-            {executiveFields.map(field => (
-              <div key={field.id} style={{marginBottom: '10px'}}>
-                <label>{field.name}</label>
-                <input
-                  type="text"
-                  name={field.name}
-                  value={newExecutiveData[field.name] || ''}
-                  onChange={handleInputChange}
-                  style={inputStyle}
-                  required
-                />
-              </div>
-            ))}
-            <button type="submit" style={buttonStyle}>Guardar</button>
-          </form>
-        </Modal>
-      )}
-
-      {selectedExecutive && (
-        <Modal onClose={() => setSelectedExecutive(null)}>
-          <h2>Historial de {selectedExecutive.Nombre}</h2>
-          {/* FIX 2: Restaurar el código para mostrar el historial */}
-          {historyLoading ? <p>Cargando historial...</p> : (
-            history.length > 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
-                {history.map(item => (
-                  <li key={item.id} style={historyItemStyle}>
-                    <div>
-                      <span style={{display: 'block', fontSize: '0.9em', color: '#666'}}>{item.date}</span>
-                      <strong>{item.criterion}</strong>
-                    </div>
-                    <span style={scoreStyle}>{item.score}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : <p>No hay evaluaciones registradas para este ejecutivo.</p>
-          )}
-        </Modal>
-      )}
-
-      <div style={gridStyle}>
-        {executives.map(executive => (
-          <div key={executive.id} style={cardStyle} onClick={() => handleViewHistory(executive)}>
-            <span style={avatarStyle}>{executive.Nombre.charAt(0)}</span>
-            <h2 style={{ margin: '10px 0' }}>{executive.Nombre}</h2>
-            <p style={cardTextStyle}><strong>Cargo:</strong> {executive.Cargo || 'N/A'}</p>
-            <p style={cardTextStyle}><strong>Área:</strong> {executive.Área || 'N/A'}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+      {isAddModalOpen && (<Modal onClose={() => setIsAddModalOpen(false)}><h2>Añadir Nuevo Ejecutivo</h2><form onSubmit={handleAddExecutive} style={{marginTop: '2rem'}}>{executiveFields.map(field => (<div key={field.id} className="form-group"><label>{field.name}</label><input type="text" name={field.name} className="form-control" value={newExecutiveData[field.name] || ''} onChange={handleInputChange} required /></div>))}<button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar</button></form></Modal>)}
+      {selectedExecutive && (<Modal onClose={() => setSelectedExecutive(null)}><h2>Historial de {selectedExecutive.Nombre}</h2>{historyLoading ? <p>Cargando historial...</p> : (history.length > 0 ? (<ul className="config-list" style={{marginTop: '2rem'}}>{history.map(item => (<li key={item.id} className="config-list-item"><div><span style={{display: 'block', fontSize: '0.9em', color: '#666'}}>{item.date}</span><strong>{item.criterion}</strong></div><span className="team-avatar" style={{width: '40px', height: '40px', fontSize: '1rem'}}>{item.score}</span></li>))}</ul>) : <p>No hay evaluaciones registradas.</p>)}</Modal>)}
+      <div className="team-grid">{executives.map(exec => (<div key={exec.id} className="card team-card" onClick={() => handleViewHistory(exec)}><div className="team-avatar">{exec.Nombre.charAt(0)}</div><h2>{exec.Nombre}</h2><p><strong>Cargo:</strong> {exec.Cargo || 'N/A'}</p><p><strong>Área:</strong> {exec.Área || 'N/A'}</p></div>))}</div>
+    </>
   );
 };
-
-// --- Estilos ---
-const containerStyle = { padding: '20px' };
-const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' };
-const cardStyle = { border: '1px solid #ccc', borderRadius: '8px', padding: '20px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer' };
-const cardTextStyle = { margin: '5px 0', color: '#555' };
-const avatarStyle = { display: 'inline-block', width: '60px', height: '60px', borderRadius: '50%', background: '#007bff', color: 'white', lineHeight: '60px', fontSize: '24px', fontWeight: 'bold' };
-const buttonStyle = { padding: '10px 15px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '5px' };
-const inputStyle = { width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '4px' };
-const modalBackdropStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
-const modalContentStyle = { background: 'white', padding: '20px', borderRadius: '8px', width: '90%', maxWidth: '500px', position: 'relative' };
-const closeButtonStyle = { position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer' };
-const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee' };
-const scoreStyle = { fontWeight: 'bold', background: '#007bff', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.9em' };
 
 export default Team;

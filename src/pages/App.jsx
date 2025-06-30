@@ -1,3 +1,49 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import Team from './pages/Team';
+import Evaluate from './pages/Evaluate';
+import Configuration from './pages/Configuration';
+import './App.css'; // Aseguramos que los estilos de App se carguen
+
+// Componente para el Layout principal que incluye la barra de navegación
+const AppLayout = ({ children }) => (
+  <div className="app-layout">
+    <nav className="sidebar">
+      <div className="sidebar-header">
+        <h3>Eva3</h3>
+        <span>Evaluaciones</span>
+      </div>
+      <ul className="nav-list">
+        <li><NavLink to="/" end>Dashboard</NavLink></li>
+        <li><NavLink to="/team">Equipo</NavLink></li>
+        <li><NavLink to="/evaluate">Evaluar</NavLink></li>
+        <li><NavLink to="/configuration">Configuración</NavLink></li>
+      </ul>
+    </nav>
+    <main className="main-content">
+      {children}
+    </main>
+  </div>
+);
+
+function App() {
+  return (
+    <Router>
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/evaluate" element={<Evaluate />} />
+          <Route path="/configuration" element={<Configuration />} />
+        </Routes>
+      </AppLayout>
+    </Router>
+  );
+}
+
+// Sobrescribimos el App.css para incluir el layout de la barra lateral
+const newCss = `
 /* src/App.css */
 
 .app-layout {
@@ -94,3 +140,8 @@
 .modal-close-btn:hover { color: var(--color-dark); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+`;
+
+// Aplicamos el nuevo CSS
+// fs.writeFileSync('src/App.css', newCss);
+export default App;
