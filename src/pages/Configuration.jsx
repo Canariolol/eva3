@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, doc, deleteDoc, setDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 const Configuration = () => {
     const [executiveFields, setExecutiveFields] = useState([]);
@@ -9,6 +9,14 @@ const Configuration = () => {
     const [executives, setExecutives] = useState([]);
     const [criteria, setCriteria] = useState([]);
     const [newCriterion, setNewCriterion] = useState({ name: '', section: 'Aptitudes Transversales' });
+    const [nonEvaluableCriteria, setNonEvaluableCriteria] = useState([]);
+    const [newNonEvaluableCriterion, setNewNonEvaluableCriterion] = useState({
+        name: '',
+        section: 'Aptitudes Transversales',
+        trackInDashboard: false,
+        inputType: 'text',
+        options: ''
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isAddingExecutive, setIsAddingExecutive] = useState(false);
@@ -31,14 +39,17 @@ const Configuration = () => {
             }
 
             const criteriaQuery = query(collection(db, 'criteria'), orderBy('name'));
+            const nonEvaluableCriteriaQuery = query(collection(db, 'nonEvaluableCriteria'), orderBy('name'));
             const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
             
-            const [criteriaSnapshot, executivesSnapshot] = await Promise.all([
+            const [criteriaSnapshot, nonEvaluableCriteriaSnapshot, executivesSnapshot] = await Promise.all([
                 getDocs(criteriaQuery),
+                getDocs(nonEvaluableCriteriaQuery),
                 getDocs(executivesQuery)
             ]);
             
             setCriteria(criteriaSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+            setNonEvaluableCriteria(nonEvaluableCriteriaSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
             setExecutives(executivesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
         } catch (err) {
@@ -99,6 +110,35 @@ const Configuration = () => {
             setError('Error al guardar el criterio.');
         }
     };
+
+    const handleSaveNonEvaluableCriterion = async (e) => {
+        e.preventDefault();
+        if (!newNonEvaluableCriterion.name) {
+            setError('El nombre del criterio no evaluable no puede estar vacío.');
+            return;
+        }
+        
+        const dataToSave = { ...newNonEvaluableCriterion };
+        if (dataToSave.inputType === 'select' && typeof dataToSave.options === 'string') {
+            dataToSave.options = dataToSave.options.split(',').map(opt => opt.trim());
+        } else if (dataToSave.inputType === 'text') {
+            delete dataToSave.options;
+        }
+
+        try {
+            await addDoc(collection(db, 'nonEvaluableCriteria'), dataToSave);
+            setNewNonEvaluableCriterion({
+                name: '',
+                section: 'Aptitudes Transversales',
+                trackInDashboard: false,
+                inputType: 'text',
+                options: ''
+            });
+            fetchData();
+        } catch (err) {
+            setError('Error al guardar el criterio no evaluable.');
+        }
+    };
     
     const handleDelete = async (collectionName, id) => {
         const fieldToDelete = executiveFields.find(f => f.id === id);
@@ -122,6 +162,8 @@ const Configuration = () => {
     const defaultFieldsNames = ['Nombre', 'Cargo', 'Área'];
     const aptitudesCriteria = criteria.filter(c => c.section === 'Aptitudes Transversales');
     const calidadCriteria = criteria.filter(c => c.section === 'Calidad de Desempeño');
+    const aptitudesNonEvaluable = nonEvaluableCriteria.filter(c => c.section === 'Aptitudes Transversales');
+    const calidadNonEvaluable = nonEvaluableCriteria.filter(c => c.section === 'Calidad de Desempeño');
 
     return (
         <div>
@@ -189,7 +231,7 @@ const Configuration = () => {
                     </ul>
                 </div>
                 <div className="card">
-                    <h2>Gestionar Criterios</h2>
+                    <h2>Gestionar Criterios Evaluables</h2>
                     <form onSubmit={handleSaveCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
@@ -228,6 +270,82 @@ const Configuration = () => {
                             <li key={crit.id} className="config-list-item">
                                 <span>{crit.name}</span>
                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('criteria', crit.id)}>🗑️</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div className="card">
+                    <h2>Gestionar Criterios no Evaluables</h2>
+                    <form onSubmit={handleSaveNonEvaluableCriterion}>
+                        <div className="form-group">
+                            <label>Nombre del Criterio</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                value={newNonEvaluableCriterion.name}
+                                onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Sección</label>
+                            <select
+                                className="form-control"
+                                value={newNonEvaluableCriterion.section}
+                                onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, section: e.target.value })}
+                            >
+                                <option value="Aptitudes Transversales">Aptitudes Transversales</option>
+                                <option value="Calidad de Desempeño">Calidad de Desempeño</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Tipo de Campo</label>
+                            <select
+                                className="form-control"
+                                value={newNonEvaluableCriterion.inputType}
+                                onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, inputType: e.target.value })}
+                            >
+                                <option value="text">Texto</option>
+                                <option value="select">Desplegable</option>
+                            </select>
+                        </div>
+                        {newNonEvaluableCriterion.inputType === 'select' && (
+                            <div className="form-group">
+                                <label>Opciones (separadas por comas)</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newNonEvaluableCriterion.options}
+                                    onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, options: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        <div className="form-group">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={newNonEvaluableCriterion.trackInDashboard}
+                                    onChange={(e) => setNewNonEvaluableCriterion({ ...newNonEvaluableCriterion, trackInDashboard: e.target.checked })}
+                                />
+                                 Seguimiento en Dashboard
+                            </label>
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio no Evaluable</button>
+                    </form>
+                    <h4 style={{marginTop: '2rem'}}>Aptitudes Transversales</h4>
+                    <ul className="config-list">
+                        {aptitudesNonEvaluable.map(crit => (
+                            <li key={crit.id} className="config-list-item">
+                                <span>{crit.name} ({crit.inputType === 'select' ? 'Desplegable' : 'Texto'}) {crit.trackInDashboard && '(Seguimiento)'}</span>
+                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('nonEvaluableCriteria', crit.id)}>🗑️</button>
+                            </li>
+                        ))}
+                    </ul>
+                    <h4 style={{marginTop: '2rem'}}>Calidad de Desempeño</h4>
+                    <ul className="config-list">
+                        {calidadNonEvaluable.map(crit => (
+                            <li key={crit.id} className="config-list-item">
+                                <span>{crit.name} ({crit.inputType === 'select' ? 'Desplegable' : 'Texto'}) {crit.trackInDashboard && '(Seguimiento)'}</span>
+                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('nonEvaluableCriteria', crit.id)}>🗑️</button>
                             </li>
                         ))}
                     </ul>

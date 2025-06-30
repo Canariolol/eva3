@@ -1,0 +1,28 @@
+.score-selector {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 1rem 0;
+}
+
+.score-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    font-weight: bold;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.score-circle:hover {
+    background-color: #dcdcdc;
+}
+
+.score-circle.selected {
+    background-color: var(--color-primary);
+    color: white;
+}
