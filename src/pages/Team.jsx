@@ -1,75 +1,162 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const Modal = ({ children, onClose }) => ( <div className="modal-backdrop"><div className="modal-content"><button onClick={onClose} className="modal-close-btn">&times;</button>{children}</div></div> );
+const Modal = ({ children, onClose }) => (
+    <div className="modal-backdrop">
+        <div className="modal-content" style={{maxWidth: '800px'}}>
+            <button onClick={onClose} className="modal-close-btn">&times;</button>
+            {children}
+        </div>
+    </div>
+);
 
 const Team = () => {
-  const [executives, setExecutives] = useState([]);
-  const [executiveFields, setExecutiveFields] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newExecutiveData, setNewExecutiveData] = useState({});
-  const [selectedExecutive, setSelectedExecutive] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+    const [executives, setExecutives] = useState([]);
+    const [evaluations, setEvaluations] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selectedExecutive, setSelectedExecutive] = useState(null);
 
-  const fetchTeamData = useCallback(async () => {
-    try {
-      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('order'));
-      const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
-      const [fieldsSnapshot, executivesSnapshot] = await Promise.all([getDocs(fieldsQuery), getDocs(executivesQuery)]);
-      setExecutiveFields(fieldsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      setExecutives(executivesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (err) {
-      console.error(err);
-      setError("No se pudo cargar la lista de ejecutivos.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    const fetchData = useCallback(async () => {
+        try {
+            const execQuery = query(collection(db, 'executives'), orderBy('Nombre'));
+            const evalQuery = query(collection(db, 'evaluations'), orderBy('evaluationDate', 'desc'));
+            const [execSnapshot, evalSnapshot] = await Promise.all([getDocs(execQuery), getDocs(evalQuery)]);
+            
+            setExecutives(execSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+            setEvaluations(evalSnapshot.docs.map(d => ({
+                id: d.id,
+                ...d.data(),
+                evaluationDate: d.data().evaluationDate?.toDate()
+            })));
 
-  useEffect(() => {
-    fetchTeamData();
-  }, [fetchTeamData]);
+        } catch (err) {
+            setError("Error al cargar los datos del equipo.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-  const handleInputChange = (e) => { setNewExecutiveData({ ...newExecutiveData, [e.target.name]: e.target.value }); };
-  
-  const handleAddExecutive = async (e) => {
-    e.preventDefault();
-    if (Object.values(newExecutiveData).some(v => !String(v).trim())) { alert("Por favor, completa todos los campos."); return; }
-    await addDoc(collection(db, 'executives'), newExecutiveData);
-    setIsAddModalOpen(false);
-    setNewExecutiveData({});
-    fetchTeamData();
-  };
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-  const handleViewHistory = async (executive) => {
-    setSelectedExecutive(executive);
-    setHistoryLoading(true);
-    try {
-      const historyQuery = query(collection(db, 'evaluations'), where('executive', '==', executive.Nombre), orderBy('date', 'desc'));
-      const querySnapshot = await getDocs(historyQuery);
-      setHistory(querySnapshot.docs.map(d => ({ id: d.id, ...d.data(), date: d.data().date.toDate().toLocaleDateString() })));
-    } catch (err) { console.error("Error al obtener el historial:", err); } 
-    finally { setHistoryLoading(false); }
-  };
+    const handleSelectExecutive = (executive) => {
+        setSelectedExecutive(executive);
+    };
+    
+    const renderExecutiveDetails = () => {
+        if (!selectedExecutive) return null;
 
-  if (loading) return <h1>Cargando...</h1>;
-  if (error) return <h1>{error}</h1>;
+        const executiveEvals = evaluations.filter(e => e.executive === selectedExecutive.Nombre);
+        if (executiveEvals.length === 0) {
+            return <p>No hay evaluaciones registradas para este ejecutivo.</p>;
+        }
 
-  return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <div><h1>Nuestro Equipo</h1><p style={{marginTop: '-10px', color: 'var(--color-secondary)'}}>Haz clic en un ejecutivo para ver su historial.</p></div>
-        <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary">Añadir Ejecutivo</button>
-      </div>
-      {isAddModalOpen && (<Modal onClose={() => setIsAddModalOpen(false)}><h2>Añadir Nuevo Ejecutivo</h2><form onSubmit={handleAddExecutive} style={{marginTop: '2rem'}}>{executiveFields.map(field => (<div key={field.id} className="form-group"><label>{field.name}</label><input type="text" name={field.name} className="form-control" value={newExecutiveData[field.name] || ''} onChange={handleInputChange} required /></div>))}<button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar</button></form></Modal>)}
-      {selectedExecutive && (<Modal onClose={() => setSelectedExecutive(null)}><h2>Historial de {selectedExecutive.Nombre}</h2>{historyLoading ? <p>Cargando historial...</p> : (history.length > 0 ? (<ul className="config-list" style={{marginTop: '2rem'}}>{history.map(item => (<li key={item.id} className="config-list-item"><div><span style={{display: 'block', fontSize: '0.9em', color: '#666'}}>{item.date}</span><strong>{item.criterion}</strong></div><span className="team-avatar" style={{width: '40px', height: '40px', fontSize: '1rem'}}>{item.score}</span></li>))}</ul>) : <p>No hay evaluaciones registradas.</p>)}</Modal>)}
-      <div className="team-grid">{executives.map(exec => (<div key={exec.id} className="card team-card" onClick={() => handleViewHistory(exec)}><div className="team-avatar">{exec.Nombre.charAt(0)}</div><h2>{exec.Nombre}</h2><p><strong>Cargo:</strong> {exec.Cargo || 'N/A'}</p><p><strong>Área:</strong> {exec.Área || 'N/A'}</p></div>))}</div>
-    </>
-  );
+        const aptitudesEvals = executiveEvals.filter(e => e.section === 'Aptitudes Transversales');
+        const calidadEvals = executiveEvals.filter(e => e.section === 'Calidad de Desempeño');
+
+        const getChartData = (evals) => {
+            const criteria = {};
+            evals.forEach(ev => {
+                Object.entries(ev.scores).forEach(([name, score]) => {
+                    if (!criteria[name]) criteria[name] = [];
+                    criteria[name].push(score);
+                });
+            });
+
+            return Object.entries(criteria).map(([name, scores]) => ({
+                name,
+                Promedio: scores.reduce((a, b) => a + b, 0) / scores.length,
+            }));
+        };
+
+        return (
+            <div>
+                <h2>{selectedExecutive.Nombre}</h2>
+                <p><strong>Cargo:</strong> {selectedExecutive.Cargo}</p>
+                <p><strong>Área:</strong> {selectedExecutive.Área}</p>
+                
+                <hr style={{margin: '2rem 0'}}/>
+
+                <h3>Rendimiento General</h3>
+                <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                        <h4>Aptitudes Transversales</h4>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={getChartData(aptitudesEvals)}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis domain={[0, 10]} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="Promedio" fill="var(--color-primary)" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <h4>Calidad de Desempeño</h4>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={getChartData(calidadEvals)}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis domain={[0, 10]} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="Promedio" fill="var(--color-success)" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <h3 style={{marginTop: '3rem'}}>Historial de Evaluaciones</h3>
+                <ul className="config-list">
+                    {executiveEvals.map(ev => (
+                        <li key={ev.id} className="config-list-item">
+                            <div>
+                                <strong style={{display: 'block'}}>{ev.section}</strong>
+                                <span style={{fontSize: '0.9rem', color: '#666'}}>
+                                    {ev.evaluationDate.toLocaleDateString('es-ES')}
+                                </span>
+                            </div>
+                            <span style={{fontWeight: 'bold', fontSize: '1.1rem'}}>
+                                {(Object.values(ev.scores).reduce((a, b) => a + b, 0) / Object.values(ev.scores).length).toFixed(2)}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    if (loading) return <h1>Cargando...</h1>;
+    if (error) return <h1>{error}</h1>;
+
+    return (
+        <>
+            <h1>Nuestro Equipo</h1>
+            <p style={{ marginTop: '-10px', color: 'var(--color-secondary)' }}>
+                Haz clic en un ejecutivo para ver su historial de rendimiento.
+            </p>
+            <div className="team-grid" style={{marginTop: '2rem'}}>
+                {executives.map(exec => (
+                    <div key={exec.id} className="card team-card" onClick={() => handleSelectExecutive(exec)}>
+                        <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
+                        <h2>{exec.Nombre}</h2>
+                        <p>{exec.Cargo || 'N/A'}</p>
+                    </div>
+                ))}
+            </div>
+
+            {selectedExecutive && (
+                <Modal onClose={() => setSelectedExecutive(null)}>
+                    {renderExecutiveDetails()}
+                </Modal>
+            )}
+        </>
+    );
 };
 
 export default Team;
