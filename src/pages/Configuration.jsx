@@ -1,176 +1,143 @@
-import React, { useState, useContext } from 'react';
-import { GlobalContext } from '../context/GlobalContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
 
-function Configuration() {
-  const { evaluationCriteria, setEvaluationCriteria, executiveFields, setExecutiveFields, isManagementDateEnabled, setIsManagementDateEnabled } = useContext(GlobalContext);
-  const [newCriterion, setNewCriterion] = useState('');
-  const [newCriterionType, setNewCriterionType] = useState('Calidad de Desempeño'); // New state for criterion type
-  const [newFieldLabel, setNewFieldLabel] = useState('');
-  const [newFieldType, setNewFieldType] = useState('text');
-  const [newFieldRequired, setNewFieldRequired] = useState(false);
+const Configuration = () => {
+  // Estados
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [criteria, setCriteria] = useState([]);
+  const [executiveFields, setExecutiveFields] = useState([]);
+  const [executives, setExecutives] = useState([]);
+  
+  // Estados para los formularios
+  const [newCriterionName, setNewCriterionName] = useState('');
+  const [newCriterionType, setNewCriterionType] = useState('Aptitudes Transversales');
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newExecutiveData, setNewExecutiveData] = useState({});
 
-  const handleAddCriterion = (e) => {
-    e.preventDefault();
-    if (newCriterion.trim() !== '') {
-      const criterionExists = evaluationCriteria.some(
-        (criterion) =>
-          criterion.name.toLowerCase() === newCriterion.trim().toLowerCase() &&
-          criterion.type === newCriterionType
-      );
-
-      if (criterionExists) {
-        alert('Este criterio ya existe para el tipo de evaluación seleccionado.');
-        return;
+  // Función centralizada para cargar todos los datos de forma segura
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Paso 1: Verificar y crear los campos de ejecutivo si no existen.
+      const fieldsRef = collection(db, 'executiveFields');
+      const fieldsSnapshotBefore = await getDocs(fieldsRef);
+      if (fieldsSnapshotBefore.empty) {
+        const defaultFields = [{ name: 'Nombre' }, { name: 'Cargo' }, { name: 'Área' }];
+        // Usamos Promise.all para asegurar que todos los campos se creen antes de continuar.
+        await Promise.all(defaultFields.map(field => addDoc(fieldsRef, field)));
       }
 
-      setEvaluationCriteria([...evaluationCriteria, { name: newCriterion.trim(), type: newCriterionType }]);
-      setNewCriterion('');
-      setNewCriterionType('Calidad de Desempeño'); // Reset to default
+      // Paso 2: Cargar todos los datos de la base de datos.
+      const criteriaQuery = query(collection(db, 'criteria'), orderBy('name'));
+      const fieldsQuery = query(collection(db, 'executiveFields'), orderBy('name'));
+      const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
+
+      const [criteriaSnapshot, fieldsSnapshot, executivesSnapshot] = await Promise.all([
+        getDocs(criteriaQuery),
+        getDocs(fieldsQuery),
+        getDocs(executivesQuery),
+      ]);
+
+      // Paso 3: Actualizar el estado de React con los datos de Firestore.
+      const fieldsList = fieldsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const initialExecData = {};
+      fieldsList.forEach(field => {
+        initialExecData[field.name] = '';
+      });
+
+      setCriteria(criteriaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setExecutiveFields(fieldsList);
+      setNewExecutiveData(initialExecData);
+      setExecutives(executivesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    } catch (err) {
+      console.error(err);
+      setError('Error al cargar los datos de configuración.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- Manejadores de eventos (Añadir/Borrar) ---
+  const handleAdd = async (collectionName, data) => {
+    try {
+      await addDoc(collection(db, collectionName), data);
+      await fetchData(); // Recargar todos los datos para mantener consistencia.
+    } catch (err) {
+      console.error(`Error al añadir en ${collectionName}:`, err);
     }
   };
 
-  const handleRemoveCriterion = (criterionToRemove) => {
-    setEvaluationCriteria(evaluationCriteria.filter(criterion => criterion.name !== criterionToRemove.name || criterion.type !== criterionToRemove.type));
-  };
-
-  const handleAddField = (e) => {
-    e.preventDefault();
-    if (newFieldLabel.trim() !== '') {
-      const newField = {
-        id: newFieldLabel.trim().toLowerCase().replace(/\s/g, '-'),
-        label: newFieldLabel.trim(),
-        type: newFieldType,
-        required: newFieldRequired,
-      };
-      setExecutiveFields([...executiveFields, newField]);
-      setNewFieldLabel('');
-      setNewFieldType('text');
-      setNewFieldRequired(false);
+  const handleDelete = async (collectionName, id) => {
+    try {
+      await deleteDoc(doc(db, collectionName, id));
+      await fetchData(); // Recargar todos los datos.
+    } catch (err) {
+      console.error(`Error al eliminar de ${collectionName}:`, err);
     }
   };
 
-  const handleRemoveField = (id) => {
-    // Prevent removing default fields (name, position, area)
-    if (['name', 'position', 'area'].includes(id)) {
-      alert('No puedes eliminar los campos por defecto (Nombre, Cargo, Área).');
-      return;
-    }
-    setExecutiveFields(executiveFields.filter(field => field.id !== id));
-  };
+  const handleAddCriterion = (e) => { e.preventDefault(); if (!newCriterionName.trim()) return; handleAdd('criteria', { name: newCriterionName, section: newCriterionType }); setNewCriterionName(''); };
+  const handleAddField = (e) => { e.preventDefault(); if (!newFieldName.trim()) return; handleAdd('executiveFields', { name: newFieldName }); setNewFieldName(''); };
+  const handleAddExecutive = (e) => { e.preventDefault(); if (Object.values(newExecutiveData).some(val => !String(val).trim())) { alert("Por favor, completa todos los campos."); return; } handleAdd('executives', newExecutiveData); };
 
-  const handleToggleManagementDate = () => {
-    setIsManagementDateEnabled(!isManagementDateEnabled);
-  };
-
-  // Filter criteria by type
-  const calidadDesempenoCriteria = evaluationCriteria.filter(c => c.type === 'Calidad de Desempeño');
-  const aptitudesTransversalesCriteria = evaluationCriteria.filter(c => c.type === 'Aptitudes Transversales');
+  if (loading) return <p style={{padding: '20px'}}>Cargando configuración...</p>;
+  if (error) return <p style={{padding: '20px'}}>{error}</p>;
 
   return (
-    <div>
-      <h1>Configuración de la Plataforma</h1>
+    <div style={{ padding: '20px', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+      {/* Sección Criterios */}
+      <div style={sectionStyle}>
+        <h2>Gestionar Criterios</h2>
+        <form onSubmit={handleAddCriterion} style={formStyle}>
+          <input type="text" value={newCriterionName} onChange={(e) => setNewCriterionName(e.target.value)} placeholder="Nombre del criterio" style={inputStyle} />
+          <select value={newCriterionType} onChange={(e) => setNewCriterionType(e.target.value)} style={inputStyle}>
+            <option value="Aptitudes Transversales">Aptitud Transversal</option>
+            <option value="Calidad de Desempeño">Calidad de Desempeño</option>
+          </select>
+          <button type="submit" style={buttonStyle}>Añadir Criterio</button>
+        </form>
+        <ul style={listStyle}>{criteria.map(c => <li key={c.id} style={listItemStyle}><span>{c.name} <em>({c.section})</em></span><button onClick={() => handleDelete('criteria', c.id)} style={deleteButtonStyle}>X</button></li>)}</ul>
+      </div>
 
-      <h2>Criterios de Evaluación</h2>
-      <form onSubmit={handleAddCriterion} className="config-form">
-        <input
-          type="text"
-          value={newCriterion}
-          onChange={(e) => setNewCriterion(e.target.value)}
-          placeholder="Nuevo criterio de evaluación"
-        />
-        <select value={newCriterionType} onChange={(e) => setNewCriterionType(e.target.value)}>
-          <option value="Calidad de Desempeño">Calidad de Desempeño</option>
-          <option value="Aptitudes Transversales">Aptitudes Transversales</option>
-        </select>
-        <button type="submit" className="small-button">Agregar Criterio</button>
-      </form>
+      {/* Sección Campos de Ejecutivo */}
+      <div style={sectionStyle}>
+        <h2>Gestionar Campos de Ejecutivo</h2>
+        <form onSubmit={handleAddField} style={formStyle}>
+          <input type="text" value={newFieldName} onChange={(e) => setNewFieldName(e.target.value)} placeholder="Nombre del nuevo campo" style={inputStyle}/>
+          <button type="submit" style={buttonStyle}>Añadir Campo</button>
+        </form>
+        <ul style={listStyle}>{executiveFields.map(f => <li key={f.id} style={listItemStyle}><span>{f.name}</span>{!['Nombre', 'Cargo', 'Área'].includes(f.name) && (<button onClick={() => handleDelete('executiveFields', f.id)} style={deleteButtonStyle}>X</button>)}</li>)}</ul>
+      </div>
 
-      <h3 className="config-section">Criterios de Calidad de Desempeño:</h3>
-      {calidadDesempenoCriteria.length === 0 ? (
-        <p>No hay criterios de Calidad de Desempeño agregados aún.</p>
-      ) : (
-        <ul className="config-section-list">
-          {calidadDesempenoCriteria.map((criterion, index) => (
-            <li key={index} className="config-list-item">
-              {criterion.name}
-              <button onClick={() => handleRemoveCriterion(criterion)} className="icon-button">
-                &times; {/* Times symbol for a simple close/delete icon */}
-              </button>
-            </li>
+      {/* Sección Ejecutivos */}
+      <div style={sectionStyle}>
+        <h2>Gestionar Ejecutivos</h2>
+        <form onSubmit={handleAddExecutive} style={formStyle}>
+          {executiveFields.map(field => (
+            <input key={field.id} type="text" name={field.name} value={newExecutiveData[field.name] || ''} onChange={(e) => setNewExecutiveData({...newExecutiveData, [e.target.name]: e.target.value})} placeholder={field.name} style={inputStyle} required />
           ))}
-        </ul>
-      )}
-
-      <h3 className="config-section">Criterios de Aptitudes Transversales:</h3>
-      {aptitudesTransversalesCriteria.length === 0 ? (
-        <p>No hay criterios de Aptitudes Transversales agregados aún.</p>
-      ) : (
-        <ul className="config-section-list">
-          {aptitudesTransversalesCriteria.map((criterion, index) => (
-            <li key={index} className="config-list-item">
-              {criterion.name}
-              <button onClick={() => handleRemoveCriterion(criterion)} className="icon-button">
-                &times;
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2>Campos para Ejecutivos</h2>
-      <form onSubmit={handleAddField} className="config-form">
-        <input
-          type="text"
-          value={newFieldLabel}
-          onChange={(e) => setNewFieldLabel(e.target.value)}
-          placeholder="Etiqueta del campo (ej. Edad)"
-        />
-        <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)}>
-          <option value="text">Texto</option>
-          <option value="number">Número</option>
-          <option value="date">Fecha</option>
-        </select>
-        <label className="small-checkbox-label">
-          <input
-            type="checkbox"
-            checked={newFieldRequired}
-            onChange={(e) => setNewFieldRequired(e.target.checked)}
-          />
-          Requerido
-        </label>
-        <button type="submit" className="small-button">Agregar Campo</button>
-      </form>
-
-      <h3 className="config-section">Campos Configurados:</h3>
-      {executiveFields.length === 0 ? (
-        <p>No hay campos configurados aún.</p>
-      ) : (
-        <ul className="config-section-list">
-          {executiveFields.map((field) => (
-            <li key={field.id} className="config-list-item">
-              {field.label} ({field.type}) {field.required && '(Requerido)'}
-              {(field.id !== 'name' && field.id !== 'position' && field.id !== 'area') && (
-                <button onClick={() => handleRemoveField(field.id)} className="icon-button">
-                  &times;
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2>Opciones de Evaluación</h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-        <label htmlFor="management-date-toggle">Activar Campo de Fecha de Gestión:</label>
-        <input
-          type="checkbox"
-          id="management-date-toggle"
-          checked={isManagementDateEnabled}
-          onChange={handleToggleManagementDate}
-        />
+          <button type="submit" style={buttonStyle}>Añadir Ejecutivo</button>
+        </form>
+        <ul style={listStyle}>{executives.map(e => <li key={e.id} style={listItemStyle}><span>{e.Nombre} <em>({e.Cargo})</em></span><button onClick={() => handleDelete('executives', e.id)} style={deleteButtonStyle}>X</button></li>)}</ul>
       </div>
     </div>
   );
-}
+};
+
+// Estilos
+const sectionStyle = { flex: '1 1 300px', minWidth: '300px' };
+const formStyle = { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' };
+const inputStyle = { padding: '8px' };
+const buttonStyle = { padding: '10px 15px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer' };
+const listStyle = { listStyle: 'none', padding: 0 };
+const listItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderBottom: '1px solid #ccc' };
+const deleteButtonStyle = { background: 'red', color: 'white', border: 'none', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '50%' };
 
 export default Configuration;
