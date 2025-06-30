@@ -8,8 +8,7 @@ const Evaluate = () => {
   const [evaluationType, setEvaluationType] = useState('Aptitudes Transversales');
   const [filteredCriteria, setFilteredCriteria] = useState([]);
   const [selectedExecutive, setSelectedExecutive] = useState('');
-  const [selectedCriterionName, setSelectedCriterionName] = useState('');
-  const [score, setScore] = useState(5);
+  const [scores, setScores] = useState({});
   const [managementDate, setManagementDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,6 +17,7 @@ const Evaluate = () => {
 
   const fetchInitialData = useCallback(async () => {
     try {
+      setLoading(true);
       const executivesQuery = query(collection(db, 'executives'), orderBy('Nombre'));
       const criteriaQuery = query(collection(db, 'criteria'), orderBy('name'));
       const [executivesSnapshot, criteriaSnapshot] = await Promise.all([getDocs(executivesQuery), getDocs(criteriaQuery)]);
@@ -28,7 +28,9 @@ const Evaluate = () => {
       setExecutives(executivesList);
       setCriteria(criteriaList);
       
-      if (executivesList.length > 0) setSelectedExecutive(executivesList[0].Nombre);
+      if (executivesList.length > 0) {
+        setSelectedExecutive(executivesList[0].Nombre);
+      }
       
     } catch (err) {
       console.error(err);
@@ -45,28 +47,54 @@ const Evaluate = () => {
   useEffect(() => {
     const newFiltered = criteria.filter(c => c.section === evaluationType);
     setFilteredCriteria(newFiltered);
-    if (newFiltered.length > 0) setSelectedCriterionName(newFiltered[0].name);
-    else setSelectedCriterionName('');
+    
+    const initialScores = {};
+    newFiltered.forEach(c => {
+      initialScores[c.name] = 5; // Default score
+    });
+    setScores(initialScores);
+
   }, [evaluationType, criteria]);
+  
+  const handleScoreChange = (criterionName, value) => {
+    setScores(prevScores => ({
+      ...prevScores,
+      [criterionName]: Number(value)
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
     setMessage('');
-    const selectedCriterion = criteria.find(c => c.name === selectedCriterionName);
-    if (!selectedExecutive || !selectedCriterion || score === '') {
-      setMessage('Por favor, completa todos los campos.');
+
+    if (!selectedExecutive) {
+      setMessage('Por favor, selecciona un ejecutivo.');
       setIsSubmitting(false);
       return;
     }
     
+    const allScoresValid = Object.values(scores).every(s => s >= 1 && s <= 10);
+    if (Object.keys(scores).length === 0 && filteredCriteria.length > 0) {
+        setMessage('No hay criterios para evaluar.');
+        setIsSubmitting(false);
+        return;
+    }
+    if (!allScoresValid) {
+        setMessage('Por favor, asegúrate de que todos los puntajes estén entre 1 y 10.');
+        setIsSubmitting(false);
+        return;
+    }
+
     let evaluationData = {
       executive: selectedExecutive,
-      criterion: selectedCriterion.name,
-      section: selectedCriterion.section,
-      score: Number(score),
-      date: serverTimestamp(),
+      section: evaluationType,
+      scores: scores,
+      evaluationDate: serverTimestamp(),
     }
+
     if (evaluationType === 'Calidad de Desempeño') {
       evaluationData.managementDate = new Date(managementDate);
     }
@@ -74,8 +102,15 @@ const Evaluate = () => {
     try {
       await addDoc(collection(db, 'evaluations'), evaluationData);
       setMessage('¡Evaluación guardada con éxito!');
-      setScore(5);
+      
+      const initialScores = {};
+      filteredCriteria.forEach(c => {
+          initialScores[c.name] = 5;
+      });
+      setScores(initialScores);
+
     } catch (error) {
+      console.error("Error saving evaluation: ", error);
       setMessage('Hubo un error al guardar la evaluación.');
     } finally {
       setIsSubmitting(false);
@@ -93,9 +128,26 @@ const Evaluate = () => {
         <div className="form-group"><label>1. Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
         <div className="form-group"><label>2. Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
         {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>3. Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
-        <div className="form-group"><label>4. Criterio a Evaluar</label><select className="form-control" value={selectedCriterionName} onChange={(e) => setSelectedCriterionName(e.target.value)} disabled={filteredCriteria.length === 0}>{filteredCriteria.length > 0 ? (filteredCriteria.map(c => <option key={c.id} value={c.name}>{c.name}</option>)) : (<option>No hay criterios para este tipo</option>)}</select></div>
-        <div className="form-group"><label>5. Puntaje (1-10)</label><input type="number" className="form-control" value={score} onChange={(e) => setScore(e.target.value)} min="1" max="10" /></div>
-        <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
+        
+        <hr style={{margin: '2rem 0'}} />
+        
+        {filteredCriteria.length > 0 ? (
+          filteredCriteria.map((c, index) => (
+            <div className="form-group" key={c.id}>
+              <label>{index + (evaluationType === 'Calidad de Desempeño' ? 4 : 3)}. {c.name}</label>
+              <input
+                type="number"
+                className="form-control"
+                value={scores[c.name] || ''}
+                onChange={(e) => handleScoreChange(c.name, e.target.value)}
+                min="1"
+                max="10"
+              />
+            </div>
+          ))
+        ) : <p>No hay criterios para este tipo de evaluación.</p>}
+
+        <button type="submit" disabled={isSubmitting || filteredCriteria.length === 0} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
         {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
       </form>
     </div>

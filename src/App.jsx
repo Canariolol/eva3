@@ -5,6 +5,7 @@ import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import './App.css'; // Importa el archivo CSS
+import Footer from './components/Footer';
 
 // Layout principal con la barra lateral de navegación
 const AppLayout = () => (
@@ -21,10 +22,13 @@ const AppLayout = () => (
         <li><NavLink to="/configuration">Configuración</NavLink></li>
       </ul>
     </nav>
-    <main className="main-content">
-      {/* Las páginas se renderizarán aquí */}
-      <Outlet />
-    </main>
+    <div className="main-panel">
+      <main className="main-content">
+        {/* Las páginas se renderizarán aquí */}
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
   </div>
 );
 
@@ -32,7 +36,6 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Todas las rutas anidadas usarán AppLayout */}
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="team" element={<Team />} />
