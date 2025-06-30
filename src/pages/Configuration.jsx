@@ -120,6 +120,8 @@ const Configuration = () => {
     if (loading) return <h1>Cargando...</h1>;
 
     const defaultFieldsNames = ['Nombre', 'Cargo', 'Área'];
+    const aptitudesCriteria = criteria.filter(c => c.section === 'Aptitudes Transversales');
+    const calidadCriteria = criteria.filter(c => c.section === 'Calidad de Desempeño');
 
     return (
         <div>
@@ -211,10 +213,20 @@ const Configuration = () => {
                         </div>
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio</button>
                     </form>
+                    <h4 style={{marginTop: '2rem'}}>Aptitudes Transversales</h4>
                     <ul className="config-list">
-                        {criteria.map(crit => (
+                        {aptitudesCriteria.map(crit => (
                             <li key={crit.id} className="config-list-item">
-                                <span>{crit.name} ({crit.section})</span>
+                                <span>{crit.name}</span>
+                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('criteria', crit.id)}>🗑️</button>
+                            </li>
+                        ))}
+                    </ul>
+                    <h4 style={{marginTop: '2rem'}}>Calidad de Desempeño</h4>
+                    <ul className="config-list">
+                        {calidadCriteria.map(crit => (
+                            <li key={crit.id} className="config-list-item">
+                                <span>{crit.name}</span>
                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('criteria', crit.id)}>🗑️</button>
                             </li>
                         ))}

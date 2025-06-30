@@ -125,16 +125,16 @@ const Evaluate = () => {
     <div className="card" style={{maxWidth: '600px', margin: 'auto'}}>
       <h2>Registrar Evaluación</h2>
       <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
-        <div className="form-group"><label>1. Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
-        <div className="form-group"><label>2. Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-        {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>3. Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+        <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+        <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
+        {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
         
         <hr style={{margin: '2rem 0'}} />
         
         {filteredCriteria.length > 0 ? (
           filteredCriteria.map((c, index) => (
             <div className="form-group" key={c.id}>
-              <label>{index + (evaluationType === 'Calidad de Desempeño' ? 4 : 3)}. {c.name}</label>
+              <label>{index + 1}. {c.name}</label>
               <input
                 type="number"
                 className="form-control"
