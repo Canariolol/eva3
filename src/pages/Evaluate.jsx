@@ -165,38 +165,40 @@ const Evaluate = () => {
   if (executives.length === 0 || criteria.length === 0) return (<div><h1>Faltan Datos</h1><p>Añade ejecutivos y criterios en <b>Configuración</b>.</p></div>);
 
   return (
-    <div className="card" style={{maxWidth: '600px', margin: 'auto'}}>
+    <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
       <h2>Registrar Evaluación</h2>
       <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
-        <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-        <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
-        {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+            <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
+            {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+            
+            {filteredNonEvaluableCriteria.length > 0 && (
+              filteredNonEvaluableCriteria.map((c) => (
+                <div className="form-group" key={c.id}>
+                  <label>{c.name}</label>
+                  {c.inputType === 'select' ? (
+                    <select 
+                      className="form-control"
+                      value={nonEvaluableData[c.name] || ''}
+                      onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}
+                    >
+                      {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={nonEvaluableData[c.name] || ''}
+                      onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}
+                    />
+                  )}
+                </div>
+              ))
+            )}
+        </div>
         
         <hr style={{margin: '2rem 0'}} />
-
-        {filteredNonEvaluableCriteria.length > 0 && (
-          filteredNonEvaluableCriteria.map((c) => (
-            <div className="form-group" key={c.id}>
-              <label>{c.name}</label>
-              {c.inputType === 'select' ? (
-                <select 
-                  className="form-control"
-                  value={nonEvaluableData[c.name] || ''}
-                  onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}
-                >
-                  {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  className="form-control"
-                  value={nonEvaluableData[c.name] || ''}
-                  onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}
-                />
-              )}
-            </div>
-          ))
-        )}
         
         {filteredCriteria.length > 0 ? (
           filteredCriteria.map((c, index) => (
