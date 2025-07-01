@@ -62,7 +62,7 @@ const Team = () => {
         };
 
         return (
-            <div>
+            <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
                 <h2>{selectedExecutive.Nombre}</h2>
                 <p><strong>Cargo:</strong> {selectedExecutive.Cargo}</p>
                 <p><strong>Área:</strong> {selectedExecutive.Área}</p>
@@ -125,34 +125,36 @@ const Team = () => {
 
         return (
             <Modal onClose={() => setSelectedEvaluation(null)}>
-                <h2>Detalle de la Evaluación</h2>
-                <p><strong>Fecha de Evaluación:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
-                {selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {selectedEvaluation.managementDate.toLocaleDateString('es-ES')}</p>}
-                <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
-                
-                <h4 style={{marginTop: '2rem'}}>Puntajes</h4>
-                <ul className='config-list'>
-                    {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
-                        <li key={name} className='config-list-item'>
-                            <span>{name}</span>
-                            <span style={{fontWeight: 'bold'}}>{score}</span>
-                        </li>
-                    ))}
-                </ul>
-                
-                {selectedEvaluation.nonEvaluableData && Object.keys(selectedEvaluation.nonEvaluableData).length > 0 && (
-                    <>
-                        <h4 style={{marginTop: '2rem'}}>Datos Adicionales</h4>
-                        <ul className='config-list'>
-                           {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
-                                <li key={name} className='config-list-item'>
-                                    <span>{name}</span>
-                                    <span>{value}</span>
-                                </li>
-                           ))}
-                        </ul>
-                    </>
-                )}
+                <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+                    <h2>Detalle de la Evaluación</h2>
+                    <p><strong>Fecha de Evaluación:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
+                    {selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {selectedEvaluation.managementDate.toLocaleDateString('es-ES')}</p>}
+                    <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
+                    
+                    <h4 style={{marginTop: '2rem'}}>Puntajes</h4>
+                    <ul className='config-list'>
+                        {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
+                            <li key={name} className='config-list-item'>
+                                <span>{name}</span>
+                                <span style={{fontWeight: 'bold'}}>{score}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    
+                    {selectedEvaluation.nonEvaluableData && Object.keys(selectedEvaluation.nonEvaluableData).length > 0 && (
+                        <>
+                            <h4 style={{marginTop: '2rem'}}>Datos Adicionales</h4>
+                            <ul className='config-list'>
+                            {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
+                                    <li key={name} className='config-list-item'>
+                                        <span>{name}</span>
+                                        <span>{value}</span>
+                                    </li>
+                            ))}
+                            </ul>
+                        </>
+                    )}
+                </div>
             </Modal>
         )
     }
