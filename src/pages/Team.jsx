@@ -106,7 +106,8 @@ const Team = () => {
                             <div>
                                 <strong style={{display: 'block'}}>{ev.section}</strong>
                                 <span style={{fontSize: '0.9rem', color: '#666'}}>
-                                    {ev.evaluationDate.toLocaleDateString('es-ES')}
+                                    Fecha Evaluación: {ev.evaluationDate.toLocaleDateString('es-ES')}
+                                    {ev.managementDate && ` | Fecha Gestión: ${ev.managementDate.toLocaleDateString('es-ES')}`}
                                 </span>
                             </div>
                             <span style={{fontWeight: 'bold', fontSize: '1.1rem'}}>
@@ -125,7 +126,8 @@ const Team = () => {
         return (
             <Modal onClose={() => setSelectedEvaluation(null)}>
                 <h2>Detalle de la Evaluación</h2>
-                <p><strong>Fecha:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
+                <p><strong>Fecha de Evaluación:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
+                {selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {selectedEvaluation.managementDate.toLocaleDateString('es-ES')}</p>}
                 <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
                 
                 <h4 style={{marginTop: '2rem'}}>Puntajes</h4>

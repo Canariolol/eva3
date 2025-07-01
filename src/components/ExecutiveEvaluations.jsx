@@ -1,18 +1,29 @@
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { GlobalContext } from '../context/GlobalContext';
 
 function ExecutiveEvaluations({ executiveId, onClose }) {
-  const { executives, evaluations, evaluationCriteria, isManagementDateEnabled } = useContext(GlobalContext);
+  const { executives, evaluations, evaluationCriteria } = useContext(GlobalContext);
 
   const executive = useMemo(() => {
-    // Ensure executiveId is treated as a number for consistent lookup
     return executives.find(exec => exec.id === Number(executiveId));
   }, [executives, executiveId]);
 
   const evaluationsForExecutive = useMemo(() => {
-    // Explicitly convert evalItem.executiveId to a number for comparison
     return evaluations.filter(evalItem => Number(evalItem.executiveId) === Number(executiveId));
   }, [evaluations, executiveId]);
+
+  const hasManagementDate = useMemo(() => 
+    evaluationsForExecutive.some(e => e.managementDate),
+    [evaluationsForExecutive]
+  );
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    // Asegurarse de que el formato sea YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
 
   if (!executive) {
     return <p>Ejecutivo no encontrado.</p>;
@@ -28,7 +39,7 @@ function ExecutiveEvaluations({ executiveId, onClose }) {
           <thead>
             <tr>
               <th>Fecha Evaluación</th>
-              {isManagementDateEnabled && <th>Fecha Gestión</th>}
+              {hasManagementDate && <th>Fecha Gestión</th>}
               <th>Tipo de Evaluación</th>
               {evaluationCriteria.map((criterion) => (
                 <th key={`${criterion.name}-${criterion.type}`}>{criterion.name}</th>
@@ -39,8 +50,8 @@ function ExecutiveEvaluations({ executiveId, onClose }) {
           <tbody>
             {evaluationsForExecutive.map(evalItem => (
               <tr key={evalItem.id}>
-                <td>{evalItem.evaluationDate}</td>
-                {isManagementDateEnabled && <td>{evalItem.managementDate || 'N/A'}</td>}
+                <td>{formatDate(evalItem.evaluationDate)}</td>
+                {hasManagementDate && <td>{formatDate(evalItem.managementDate)}</td>}
                 <td>{evalItem.evaluationType || 'N/A'}</td>
                 {evaluationCriteria.map((criterion) => (
                   <td key={`${evalItem.id}-${criterion.name}-${criterion.type}`}>{evalItem.evaluationData[criterion.name] || 'N/A'}</td>
