@@ -1,48 +1,39 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { db } from '../firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { useGlobalContext } from '../context/GlobalContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const Modal = ({ children, onClose, size = 'default' }) => (
-    <div className="modal-backdrop">
-        <div className="modal-content" style={{ maxWidth: size === 'large' ? '800px' : '500px' }}>
-            <button onClick={onClose} className="modal-close-btn">&times;</button>
-            {children}
+const Modal = ({ children, onClose, size = 'default' }) => {
+    const [isClosing, setIsClosing] = useState(false);
+
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            onClose();
+        }, 300); // Match animation duration
+    };
+
+    const handleBackdropClick = () => {
+        handleClose();
+    };
+
+    const handleContentClick = (e) => {
+        e.stopPropagation();
+    };
+    
+    return (
+        <div className={`modal-backdrop ${isClosing ? 'closing' : ''}`} onClick={handleBackdropClick}>
+            <div className="modal-content" onClick={handleContentClick} style={{ maxWidth: size === 'large' ? '800px' : '500px' }}>
+                <button onClick={handleClose} className="modal-close-btn">&times;</button>
+                {children}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const Team = () => {
-    const [executives, setExecutives] = useState([]);
-    const [evaluations, setEvaluations] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { executives, evaluations } = useGlobalContext();
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
-
-    const fetchData = useCallback(async () => {
-        try {
-            const execQuery = query(collection(db, 'executives'), orderBy('Nombre'));
-            const evalQuery = query(collection(db, 'evaluations'), orderBy('evaluationDate', 'desc'));
-            const [execSnapshot, evalSnapshot] = await Promise.all([getDocs(execQuery), getDocs(evalQuery)]);
-            
-            setExecutives(execSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-            setEvaluations(evalSnapshot.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
-                evaluationDate: d.data().evaluationDate?.toDate()
-            })));
-
-        } catch (err) {
-            setError("Error al cargar los datos del equipo.");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
     
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
@@ -163,9 +154,6 @@ const Team = () => {
             </Modal>
         )
     }
-
-    if (loading) return <h1>Cargando...</h1>;
-    if (error) return <h1>{error}</h1>;
 
     return (
         <>

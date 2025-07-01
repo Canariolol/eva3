@@ -1,15 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, doc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
 
 const Configuration = () => {
-    const [executiveFields, setExecutiveFields] = useState([]);
+    const { 
+        executives, 
+        criteria, 
+        nonEvaluableCriteria, 
+        aptitudeSubsections, 
+        executiveFields, 
+        headerInfo,
+        headerInfoId,
+        refreshData,
+        setHeaderInfo,
+    } = useGlobalContext();
+
+    const [showAllEvaluable, setShowAllEvaluable] = useState(false);
+    const [showAllNonEvaluable, setShowAllNonEvaluable] = useState(false);
+    const INITIAL_VISIBLE_COUNT = 4;
+
     const [newField, setNewField] = useState({ name: '' });
     const [newExecutive, setNewExecutive] = useState({});
-    const [executives, setExecutives] = useState([]);
-    const [criteria, setCriteria] = useState([]);
     const [newCriterion, setNewCriterion] = useState({ name: '', section: 'Aptitudes Transversales', subsection: '' });
-    const [nonEvaluableCriteria, setNonEvaluableCriteria] = useState([]);
     const [newNonEvaluableCriterion, setNewNonEvaluableCriterion] = useState({
         name: '',
         section: 'Aptitudes Transversales',
@@ -17,106 +30,10 @@ const Configuration = () => {
         inputType: 'text',
         options: ''
     });
-    const [aptitudeSubsections, setAptitudeSubsections] = useState([]);
     const [newSubsection, setNewSubsection] = useState({ name: '' });
     const [isCreatingSubsection, setIsCreatingSubsection] = useState(false);
-    const [headerInfo, setHeaderInfo] = useState({ company: '', area: '', manager: '' });
-    const [headerInfoId, setHeaderInfoId] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isAddingExecutive, setIsAddingExecutive] = useState(false);
-    
-    const fetchData = useCallback(async () => {
-        try {
-            const [fieldsSnap, criteriaSnap, nonEvaluableSnap, execSnap, subsectionsSnap, headerSnap] = await Promise.all([
-                getDocs(query(collection(db, 'executiveFields'), orderBy('order'))),
-                getDocs(query(collection(db, 'criteria'), orderBy('name'))),
-                getDocs(query(collection(db, 'nonEvaluableCriteria'), orderBy('name'))),
-                getDocs(query(collection(db, 'executives'), orderBy('Nombre'))),
-                getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order'))),
-                getDocs(collection(db, 'headerInfo'))
-            ]);
-
-            if (fieldsSnap.empty) {
-                const defaultFields = [
-                    { name: 'Nombre', order: 1, isDefault: true },
-                    { name: 'Cargo', order: 2, isDefault: true },
-                    { name: 'Área', order: 3, isDefault: true }
-                ];
-                await Promise.all(defaultFields.map(field => addDoc(collection(db, 'executiveFields'), field)));
-                const newFieldsSnap = await getDocs(query(collection(db, 'executiveFields'), orderBy('order')));
-                setExecutiveFields(newFieldsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } else {
-                setExecutiveFields(fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            }
-            
-            const fetchedCriteria = criteriaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setCriteria(fetchedCriteria);
-
-            let subsections = subsectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const existingSubsectionNames = new Set(subsections.map(s => s.name));
-            const subsectionsFromCriteria = new Set(
-                fetchedCriteria
-                    .filter(c => c.section === 'Aptitudes Transversales' && c.subsection)
-                    .map(c => c.subsection)
-            );
-
-            const newSubsectionsToAdd = [];
-            for (const subName of subsectionsFromCriteria) {
-                if (!existingSubsectionNames.has(subName)) {
-                    newSubsectionsToAdd.push({ name: subName });
-                }
-            }
-            
-            if (newSubsectionsToAdd.length > 0) {
-                let maxOrder = subsections.reduce((max, s) => (s.order > max ? s.order : max), 0);
-                const batch = writeBatch(db);
-                newSubsectionsToAdd.forEach(sub => {
-                    maxOrder++;
-                    const newSubDocRef = doc(collection(db, 'aptitudeSubsections'));
-                    batch.set(newSubDocRef, { ...sub, order: maxOrder });
-                });
-                await batch.commit();
-    
-                const newSubsectionsSnap = await getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order')));
-                subsections = newSubsectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            }
-
-            const subsectionsWithoutOrder = subsections.filter(s => s.order === undefined);
-            if (subsectionsWithoutOrder.length > 0) {
-                let maxOrder = subsections.reduce((max, s) => (s.order > max ? s.order : max), 0);
-                const updates = subsectionsWithoutOrder.map(subsection => {
-                    maxOrder++;
-                    subsection.order = maxOrder;
-                    return setDoc(doc(db, 'aptitudeSubsections', subsection.id), { order: maxOrder }, { merge: true });
-                });
-                await Promise.all(updates);
-                subsections.sort((a, b) => a.order - b.order);
-            }
-
-            setAptitudeSubsections(subsections);
-            setNonEvaluableCriteria(nonEvaluableSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setExecutives(execSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            
-            if (!headerSnap.empty) {
-                const headerDoc = headerSnap.docs[0];
-                setHeaderInfo(headerDoc.data());
-                setHeaderInfoId(headerDoc.id);
-            }
-
-        } catch (err) {
-            setError('Error al cargar la configuración.');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
 
     const handleSaveHeaderInfo = async (e) => {
         e.preventDefault();
@@ -124,9 +41,10 @@ const Configuration = () => {
             if (headerInfoId) {
                 await setDoc(doc(db, 'headerInfo', headerInfoId), headerInfo);
             } else {
-                await addDoc(collection(db, 'headerInfo'), headerInfo);
+                const newDocRef = await addDoc(collection(db, 'headerInfo'), headerInfo);
+                setHeaderInfo(newDocRef.id);
             }
-            fetchData();
+            await refreshData();
         } catch (err) {
             setError('Error al guardar la información del encabezado.');
         }
@@ -138,7 +56,7 @@ const Configuration = () => {
         const maxOrder = executiveFields.reduce((max, field) => (field.order > max ? field.order : max), 0);
         await addDoc(collection(db, 'executiveFields'), { name: newField.name, order: maxOrder + 1, isDefault: false });
         setNewField({ name: '' });
-        fetchData();
+        await refreshData();
     };
 
     const handleSaveExecutive = async (e) => {
@@ -147,7 +65,7 @@ const Configuration = () => {
         await addDoc(collection(db, 'executives'), newExecutive);
         setNewExecutive({});
         setIsAddingExecutive(false);
-        fetchData();
+        await refreshData();
     };
     
     const handleSaveCriterion = async (e) => {
@@ -159,14 +77,14 @@ const Configuration = () => {
         }
         await addDoc(collection(db, 'criteria'), dataToSave);
         setNewCriterion({ name: '', section: 'Aptitudes Transversales', subsection: '' });
-        fetchData();
+        await refreshData();
     };
     
     const handleSaveSubsection = async () => {
         if (!newSubsection.name) return;
         const maxOrder = aptitudeSubsections.reduce((max, sub) => (sub.order > max ? sub.order : max), 0);
         await addDoc(collection(db, 'aptitudeSubsections'), { ...newSubsection, order: maxOrder + 1 });
-        await fetchData(); 
+        await refreshData();
         setNewCriterion(prev => ({...prev, subsection: newSubsection.name}));
         setNewSubsection({ name: '' });
         setIsCreatingSubsection(false);
@@ -195,7 +113,7 @@ const Configuration = () => {
 
         await addDoc(collection(db, 'nonEvaluableCriteria'), dataToSave);
         setNewNonEvaluableCriterion({ name: '', section: 'Aptitudes Transversales', trackInDashboard: false, inputType: 'text', options: '' });
-        fetchData();
+        await refreshData();
     };
     
     const handleDelete = async (collectionName, id) => {
@@ -210,7 +128,7 @@ const Configuration = () => {
                 }
             }
             await deleteDoc(doc(db, collectionName, id));
-            fetchData();
+            await refreshData();
         }
     };
 
@@ -231,11 +149,8 @@ const Configuration = () => {
         batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub1.order });
     
         await batch.commit();
-        fetchData();
+        await refreshData();
     };
-
-
-    if (loading) return <h1>Cargando...</h1>;
 
     const defaultFieldsNames = ['Nombre', 'Cargo', 'Área'];
     const aptitudesCriteria = criteria.filter(c => c.section === 'Aptitudes Transversales');
@@ -251,7 +166,71 @@ const Configuration = () => {
         acc[subsection].push(criterion);
         return acc;
     }, {});
+    
+    const renderLimitedList = (sections, showAll) => {
+        const output = [];
+        let flatList = [];
+        sections.forEach(section => {
+            if(section.items.length > 0) {
+                flatList.push({type: 'header', title: section.title, marginTop: section.marginTop});
+                section.items.forEach(item => {
+                    flatList.push({type: 'item', ...item, collection: section.collection, isNonEvaluable: section.isNonEvaluable});
+                });
+            }
+        });
 
+        const visibleItems = showAll ? flatList : flatList.slice(0, INITIAL_VISIBLE_COUNT);
+        let currentSectionItems = [];
+        let currentSectionTitle = null;
+
+        const flushSection = () => {
+            if (currentSectionTitle) {
+                output.push(
+                    <div key={currentSectionTitle}>
+                        <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)', marginTop: '1rem'}}>{currentSectionTitle}</h5>
+                        <ul className="config-list">
+                            {currentSectionItems}
+                        </ul>
+                    </div>
+                );
+            }
+            currentSectionItems = [];
+        };
+
+        visibleItems.forEach((item) => {
+            if (item.type === 'header') {
+                flushSection();
+                currentSectionTitle = item.title;
+            } else {
+                currentSectionItems.push(
+                     <li key={item.id} className="config-list-item">
+                        <span>{item.name}{item.isNonEvaluable && ` (${item.inputType === 'select' ? 'Desplegable' : 'Texto'}) ${item.trackInDashboard ? '(Seguimiento)' : ''}`}</span>
+                        <button onClick={() => handleDelete(item.collection, item.id)} className="btn-icon btn-icon-danger">🗑️</button>
+                    </li>
+                );
+            }
+        });
+        flushSection();
+
+        return { renderedElements: output, totalLines: flatList.length };
+    };
+    
+    const evaluableSections = [
+        ...Object.entries(groupedAptitudesCriteria).map(([subsection, criteriaList]) => ({
+            title: subsection,
+            items: criteriaList,
+            collection: 'criteria'
+        })),
+        { title: 'Calidad de Desempeño', items: calidadCriteria, collection: 'criteria', marginTop: '1.5rem' }
+    ];
+
+    const nonEvaluableSections = [
+        { title: 'Aptitudes Transversales', items: aptitudesNonEvaluable, collection: 'nonEvaluableCriteria', isNonEvaluable: true },
+        { title: 'Calidad de Desempeño', items: calidadNonEvaluable, collection: 'nonEvaluableCriteria', isNonEvaluable: true, marginTop: '1.5rem' }
+    ];
+    
+    const { renderedElements: evaluableList, totalLines: totalEvaluableLines } = renderLimitedList(evaluableSections, showAllEvaluable);
+    const { renderedElements: nonEvaluableList, totalLines: totalNonEvaluableLines } = renderLimitedList(nonEvaluableSections, showAllNonEvaluable);
 
     return (
         <div>
@@ -287,7 +266,7 @@ const Configuration = () => {
                 </div>
                 <div className="card">
                     <h2>Gestionar Criterios Evaluables</h2>
-                    <form onSubmit={handleSaveCriterion}>
+                     <form onSubmit={handleSaveCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
                             <input type="text" className="form-control" value={newCriterion.name} onChange={(e) => setNewCriterion({ ...newCriterion, name: e.target.value })}/>
@@ -319,24 +298,12 @@ const Configuration = () => {
                     </form>
                     <hr style={{margin: '2rem 0'}}/>
                     <h4 style={{marginTop: '0'}}>Listado de Criterios</h4>
-                    <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)'}}>Aptitudes Transversales</h5>
-                    {Object.entries(groupedAptitudesCriteria).map(([subsection, criteriaList]) => (
-                        <div key={subsection}>
-                            <h6 style={{ marginTop: '1rem', fontWeight: 'bold' }}>{subsection}</h6>
-                            <ul className="config-list">
-                                {criteriaList.map(c => (
-                                    <li key={c.id} className="config-list-item">
-                                        <span>{c.name}</span>
-                                        <button onClick={() => handleDelete('criteria', c.id)} className="btn-icon btn-icon-danger">🗑️</button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
-                    <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)', marginTop: '1.5rem'}}>Calidad de Desempeño</h5>
-                    <ul className="config-list">
-                         {calidadCriteria.map(c => <li key={c.id} className="config-list-item"><span>{c.name}</span><button onClick={() => handleDelete('criteria', c.id)} className="btn-icon btn-icon-danger">🗑️</button></li>)}
-                    </ul>
+                    {evaluableList}
+                    {totalEvaluableLines > INITIAL_VISIBLE_COUNT && (
+                        <button onClick={() => setShowAllEvaluable(!showAllEvaluable)} className="btn btn-secondary" style={{width: '100%', marginTop: '1rem'}}>
+                            {showAllEvaluable ? 'Ver menos' : 'Ver más...'}
+                        </button>
+                    )}
                 </div>
                  <div className="card">
                     <h2>Ordenar Subsecciones de Aptitudes</h2>
@@ -416,24 +383,12 @@ const Configuration = () => {
                     </form>
                     <hr style={{margin: '2rem 0'}}/>
                      <h4 style={{marginTop: '0'}}>Listado de Criterios</h4>
-                    <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)'}}>Aptitudes Transversales</h5>
-                    <ul className="config-list">
-                        {aptitudesNonEvaluable.map(crit => (
-                            <li key={crit.id} className="config-list-item">
-                                <span>{crit.name} ({crit.inputType === 'select' ? 'Desplegable' : 'Texto'}) {crit.trackInDashboard && '(Seguimiento)'}</span>
-                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('nonEvaluableCriteria', crit.id)}>🗑️</button>
-                            </li>
-                        ))}
-                    </ul>
-                     <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)', marginTop: '1.5rem'}}>Calidad de Desempeño</h5>
-                    <ul className="config-list">
-                        {calidadNonEvaluable.map(crit => (
-                            <li key={crit.id} className="config-list-item">
-                                <span>{crit.name} ({crit.inputType === 'select' ? 'Desplegable' : 'Texto'}) {crit.trackInDashboard && '(Seguimiento)'}</span>
-                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('nonEvaluableCriteria', crit.id)}>🗑️</button>
-                            </li>
-                        ))}
-                    </ul>
+                    {nonEvaluableList}
+                    {totalNonEvaluableLines > INITIAL_VISIBLE_COUNT && (
+                        <button onClick={() => setShowAllNonEvaluable(!showAllNonEvaluable)} className="btn btn-secondary" style={{width: '100%', marginTop: '1rem'}}>
+                            {showAllNonEvaluable ? 'Ver menos' : 'Ver más...'}
+                        </button>
+                    )}
                 </div>
                 <div className="card">
                     <h2>Gestionar Campos de Creación de Ejecutivos</h2>
