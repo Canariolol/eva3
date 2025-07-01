@@ -62,7 +62,6 @@ const processDataForLineChart = (evaluations, dateField = 'date') => {
 const processDataForBarChart = (evaluations, section, criteriaConfig, chartState = null) => {
   const sectionEvaluations = evaluations.filter(e => e.section === section);
 
-  // New logic for transversal chart with drill-down
   if (section === 'Aptitudes Transversales' && chartState) {
     const { view, selectedSubsection } = chartState;
     const criterionToSubsectionMap = criteriaConfig
@@ -124,7 +123,6 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
     }
   }
 
-  // Original logic for other sections (e.g., Calidad de Desempeño)
   const dataByCriterion = sectionEvaluations.reduce((acc, curr) => {
     Object.entries(curr.scores).forEach(([criterion, score]) => {
       if (!acc[criterion]) acc[criterion] = [];
@@ -141,38 +139,53 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
 };
 
 const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria, section) => {
-  const trackedCriteria = nonEvaluableCriteria.filter(c => c.section === section && c.trackInDashboard);
+  const trackedCriteria = nonEvaluableCriteria.filter(c => c.section === section && (c.trackInDashboard || c.trackEmptyInDashboard));
   
-  const metrics = trackedCriteria.map(criterion => {
-    if (criterion.inputType === 'select') {
-      const counts = criterion.options.reduce((acc, option) => {
-        acc[option] = 0;
-        return acc;
-      }, {});
+  let metrics = [];
 
+  trackedCriteria.forEach(criterion => {
+    if (criterion.trackInDashboard) {
+        if (criterion.inputType === 'select') {
+          const counts = criterion.options.reduce((acc, option) => ({ ...acc, [option]: 0 }), {});
+          sectionEvaluations.forEach(ev => {
+            const value = ev.nonEvaluableData?.[criterion.name];
+            if (value && counts.hasOwnProperty(value)) {
+              counts[value]++;
+            }
+          });
+          metrics.push({ name: criterion.name, type: 'select', counts });
+        } else {
+          const count = sectionEvaluations.reduce((acc, ev) => (ev.nonEvaluableData?.[criterion.name] ? acc + 1 : acc), 0);
+          metrics.push({ name: `${criterion.name} (Registrados)`, type: 'text', count });
+        }
+    }
+    
+    if (criterion.trackEmptyInDashboard) {
+      let responded = 0;
+      let pending = 0;
       sectionEvaluations.forEach(ev => {
-        if (ev.nonEvaluableData && ev.nonEvaluableData[criterion.name]) {
-          const selectedOption = ev.nonEvaluableData[criterion.name];
-          if (counts.hasOwnProperty(selectedOption)) {
-            counts[selectedOption]++;
-          }
+        const value = ev.nonEvaluableData?.[criterion.name];
+        if (!value || value.trim() === '' || value.toLowerCase() === 'n/a') {
+          pending++;
+        } else {
+          responded++;
         }
       });
-      return { name: criterion.name, type: 'select', counts };
-    } 
-    else {
-      const count = sectionEvaluations.reduce((acc, ev) => {
-        if (ev.nonEvaluableData && ev.nonEvaluableData[criterion.name]) {
-          return acc + 1;
-        }
-        return acc;
-      }, 0);
-      return { name: criterion.name, type: 'text', count };
+      
+      metrics.push({
+          name: `${criterion.name}(s)`,
+          type: 'select', // Use 'select' type to be handled by the renderer
+          counts: {
+              'Ingresados': responded,
+              'Sin ingreso (N/A)': pending,
+          }
+      });
     }
   });
 
   return metrics;
 };
+
 
 const processExecutiveAverages = (sectionEvaluations) => {
     const executiveData = {};
@@ -302,12 +315,12 @@ const Dashboard = () => {
                     <p style={{marginTop: '1rem'}}><strong>{metric.name}:</strong></p>
                     <ul style={{listStylePosition: 'inside', paddingLeft: '1rem', margin: 0}}>
                         {Object.entries(metric.counts).map(([option, count]) => (
-                        <li key={option}>{pluralize(count, option)}: {count}</li>
+                        <li key={option}>{option}: {count}</li>
                         ))}
                     </ul>
                     </>
                 ) : (
-                    <p><strong>{pluralize(metric.count, metric.name)}:</strong> {metric.count}</p>
+                    <p><strong>{pluralize(metric.count, metric.name, metric.name)}:</strong> {metric.count}</p>
                 )}
                 </div>
             ))}
