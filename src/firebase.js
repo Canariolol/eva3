@@ -5,9 +5,14 @@ import { instances } from './firebase-instances';
 // Función para obtener el subdominio de la URL actual
 const getSubdomain = () => {
   const hostname = window.location.hostname;
+
+  if (hostname === 'localhost') {
+    return 'localhost';
+  }
+
   const parts = hostname.split('.');
   
-  // Si estamos en localhost o en una URL sin subdominio (ej: tu-dominio.com),
+  // Si estamos en una URL sin subdominio (ej: tu-dominio.com),
   // no hay un subdominio de cliente específico.
   if (parts.length < 3 || parts[0] === 'www') {
     return null;

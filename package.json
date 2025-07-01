@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:all": "npm run build && firebase deploy --only hosting --project eva3-1b284 && firebase deploy --only hosting --project eva3-cathywest && firebase deploy --only hosting --project eva3-demo"
   },
   "dependencies": {
     "firebase": "^11.9.1",
