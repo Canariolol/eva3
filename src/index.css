@@ -7,8 +7,10 @@
 
   --color-primary: #007bff;
   --color-primary-dark: #0056b3;
+  --color-primary-pastel: rgba(0, 123, 255, 0.1);
   --color-secondary: #6c757d;
   --color-success: #28a745;
+  --color-success-pastel: rgba(40, 167, 69, 0.1);
   --color-danger: #dc3545;
   --color-light: #f8f9fa;
   --color-dark: #343a40;
@@ -39,23 +41,4 @@ h1, h2, h3, h4, h5, h6 {
 a {
   color: var(--color-primary);
   text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-/* Scrollbar para que coincida con el diseño */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
 }

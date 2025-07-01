@@ -244,7 +244,7 @@ const Dashboard = () => {
 
     const renderExecutiveSummary = (averages, title) => (
         <div className="card" style={{ flex: 1 }}>
-            <h4>Resumen por Ejecutivo</h4>
+            <h4 className="card-title">{`Resumen por Ejecutivo: ${title}`}</h4>
             <ul className="config-list">
                 {averages.slice(0, 5).map(avg => (
                     <li key={avg.name} className="config-list-item">
@@ -263,7 +263,7 @@ const Dashboard = () => {
 
     const renderAdditionalMetricsCard = (title, evaluations, nonEvaluable, overallAverage, color) => (
         <div className="card" style={{flex: 1}}>
-        <h4>{title}</h4>
+        <h4 className={`card-title ${color === 'var(--color-primary)' ? 'card-title-primary' : 'card-title-success'}`}>{title}</h4>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', height: 'calc(100% - 2.5rem)' }}>
             <div style={{ flex: 1, paddingRight: '1rem', overflowY: 'auto' }}>
             <p><strong>{pluralize(evaluations.length, 'Evaluación Realizada', 'Evaluaciones Realizadas')}:</strong> {evaluations.length}</p>
@@ -306,8 +306,8 @@ const Dashboard = () => {
         <section className="dashboard-section">
             <h2>Calidad de Desempeño</h2>
             <div className="dashboard-grid">
-            <div className="card"><h4>Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={performanceDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
-            <div className="card"><h4>Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={performanceDataBar}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, 10]} /><Tooltip /><Legend /><Bar dataKey="Puntaje Promedio" fill="var(--color-success)" /></BarChart></ResponsiveContainer></div>
+            <div className="card"><h4 className="card-title card-title-success">Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={performanceDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
+            <div className="card"><h4 className="card-title card-title-success">Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={performanceDataBar}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, 10]} /><Tooltip /><Legend /><Bar dataKey="Puntaje Promedio" fill="var(--color-success)" /></BarChart></ResponsiveContainer></div>
             </div>
             <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', alignItems: 'stretch' }}>
                 {(performanceNonEvaluable.length > 0 || performanceEvaluations.length > 0) && 
@@ -319,9 +319,9 @@ const Dashboard = () => {
         <section className="dashboard-section">
             <h2>Aptitudes Transversales</h2>
             <div className="dashboard-grid">
-            <div className="card"><h4>Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={transversalDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
+            <div className="card"><h4 className="card-title card-title-primary">Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={transversalDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
             <div className="card">
-                <h4>{getTransversalChartTitle()}</h4>
+                <h4 className="card-title card-title-primary">{getTransversalChartTitle()}</h4>
                 <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={transversalDataBar} onClick={handleTransversalChartClick}>
                     <CartesianGrid strokeDasharray="3 3" />

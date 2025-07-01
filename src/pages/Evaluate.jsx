@@ -119,51 +119,51 @@ const Evaluate = () => {
 
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
-        <h2>Registrar Evaluación</h2>
-        <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-            <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
-            {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
-            
-            {filteredNonEvaluableCriteria.map((c) => (
-                <div className="form-group" key={c.id}>
-                <label>{c.name}</label>
-                {c.inputType === 'select' ? (
-                    <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
-                    {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                ) : (
-                    <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                )}
-                </div>
-            ))}
-            </div>
-            
-            <hr style={{margin: '2rem 0'}} />
-            
-            {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
-                criteriaList.length > 0 && (
-                    <div key={groupName}>
-                        {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
-                        {criteriaList.map((c, index) => (
-                            <div className="form-group" key={c.id}>
-                                <label>{index + 1}. {c.name}</label>
-                                <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
-                            </div>
-                        ))}
-                        {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
-                            <hr style={{ margin: '2.5rem 0', border: '1px solid #eee' }} />
-                        )}
+            <h4 className="card-title card-title-primary">Registrar Evaluación</h4>
+            <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+                <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
+                {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+                
+                {filteredNonEvaluableCriteria.map((c) => (
+                    <div className="form-group" key={c.id}>
+                    <label>{c.name}</label>
+                    {c.inputType === 'select' ? (
+                        <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
+                        {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                    ) : (
+                        <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
+                    )}
                     </div>
-                )
-            ))}
+                ))}
+                </div>
+                
+                <hr style={{margin: '2rem 0'}} />
+                
+                {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
+                    criteriaList.length > 0 && (
+                        <div key={groupName}>
+                            {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
+                            {criteriaList.map((c, index) => (
+                                <div className="form-group" key={c.id}>
+                                    <label>{index + 1}. {c.name}</label>
+                                    <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
+                                </div>
+                            ))}
+                            {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
+                                <hr style={{ margin: '2.5rem 0', border: '1px solid #eee' }} />
+                            )}
+                        </div>
+                    )
+                ))}
 
-            {Object.values(groupedCriteria).every(list => list.length === 0) && <p>No hay criterios para este tipo de evaluación.</p>}
+                {Object.values(groupedCriteria).every(list => list.length === 0) && <p>No hay criterios para este tipo de evaluación.</p>}
 
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
-            {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
-        </form>
+                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
+                {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
+            </form>
         </div>
     );
 };

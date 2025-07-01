@@ -238,7 +238,7 @@ const Configuration = () => {
             {error && <p className="error-message">{error}</p>}
             <div className="config-grid">
                 <div className="card">
-                    <h2>Gestionar Ejecutivos</h2>
+                    <h4 className="card-title card-title-primary">Gestionar Ejecutivos</h4>
                     <div style={{ marginBottom: '1rem' }}>
                         <button className="btn btn-primary" onClick={() => setIsAddingExecutive(!isAddingExecutive)}>
                             {isAddingExecutive ? 'Cancelar' : 'Agregar Ejecutivo'}
@@ -265,7 +265,7 @@ const Configuration = () => {
                     </ul>
                 </div>
                 <div className="card">
-                    <h2>Gestionar Criterios Evaluables</h2>
+                    <h4 className="card-title card-title-primary">Gestionar Criterios Evaluables</h4>
                      <form onSubmit={handleSaveCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
@@ -306,7 +306,7 @@ const Configuration = () => {
                     )}
                 </div>
                  <div className="card">
-                    <h2>Ordenar Subsecciones de Aptitudes</h2>
+                    <h4 className="card-title card-title-primary">Ordenar Subsecciones de Aptitudes</h4>
                     <p className="text-muted" style={{marginBottom: '1rem', fontSize: '0.9rem'}}>
                         Usa los botones para cambiar el orden en que aparecen las subsecciones.
                     </p>
@@ -347,7 +347,7 @@ const Configuration = () => {
                     </ul>
                 </div>
                 <div className="card">
-                    <h2>Gestionar Criterios no Evaluables</h2>
+                    <h4 className="card-title card-title-primary">Gestionar Criterios no Evaluables</h4>
                     <form onSubmit={handleSaveNonEvaluableCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
@@ -391,7 +391,7 @@ const Configuration = () => {
                     )}
                 </div>
                 <div className="card">
-                    <h2>Gestionar Campos de Creación de Ejecutivos</h2>
+                    <h4 className="card-title card-title-primary">Gestionar Campos de Creación de Ejecutivos</h4>
                     <form onSubmit={handleSaveField}>
                         <div className="form-group">
                             <label>Añadir Campo Adicional</label>
@@ -411,7 +411,7 @@ const Configuration = () => {
                     </ul>
                 </div>
                 <div className="card">
-                    <h2>Información del Encabezado</h2>
+                    <h4 className="card-title card-title-primary">Información del Encabezado</h4>
                     <form onSubmit={handleSaveHeaderInfo}>
                         <div className="form-group">
                             <label>Nombre de la Empresa</label>
