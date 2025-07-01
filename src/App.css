@@ -19,6 +19,16 @@
   position: relative;
 }
 
+h1 {
+    color: var(--color-dark);
+}
+
+.page-subtitle {
+    margin-top: -10px;
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
 /* Estilos de la barra lateral */
 .sidebar {
   width: 250px;
@@ -181,41 +191,6 @@
   margin-bottom: 3rem;
 }
 
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2rem;
-}
-
-.team-card {
-  text-align: center;
-  cursor: pointer;
-  padding: 2rem;
-}
-
-.team-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.team-card h2 {
-  margin: 10px 0 5px;
-}
-
-.team-card p {
-  color: var(--color-secondary);
-  margin: 0;
-}
-
 .config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -235,11 +210,28 @@
   padding: 12px;
   border-bottom: 1px solid var(--color-border);
   transition: var(--transition);
+  cursor: pointer;
 }
 
 .config-list-item:hover {
   background-color: #f8f9fa;
 }
+
+.config-list-item strong {
+    display: block;
+}
+
+.config-list-item .evaluation-dates {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.config-list-item .evaluation-avg {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--color-primary);
+}
+
 
 .config-actions {
   display: flex;
@@ -265,6 +257,7 @@
   color: var(--color-danger);
 }
 
+/* Modal Styles */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -294,6 +287,10 @@
   animation: slideIn 0.4s ease-out;
 }
 
+.modal-large {
+    max-width: 800px;
+}
+
 .modal-backdrop.closing .modal-content {
     animation: slideOut 0.3s ease-out forwards;
 }
@@ -313,6 +310,27 @@
 .modal-close-btn:hover {
   color: var(--color-dark);
 }
+
+
+/* Recharts Tooltip */
+.custom-tooltip {
+    background-color: rgba(30, 41, 59, 0.9);
+    padding: 10px 15px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    color: white;
+}
+.custom-tooltip .label {
+    margin: 0;
+    font-weight: bold;
+    color: white;
+}
+.custom-tooltip .intro {
+    margin: 5px 0 0;
+    color: var(--color-secondary-light);
+}
+
 
 @keyframes fadeIn {
   from {

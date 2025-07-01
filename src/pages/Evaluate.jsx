@@ -15,6 +15,7 @@ const Evaluate = () => {
     const [scores, setScores] = useState({});
     const [nonEvaluableData, setNonEvaluableData] = useState({});
     const [managementDate, setManagementDate] = useState(new Date().toISOString().slice(0, 10));
+    const [observations, setObservations] = useState(''); // State for observations
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,6 +61,7 @@ const Evaluate = () => {
             initialNonEvaluableData[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : '';
         });
         setNonEvaluableData(initialNonEvaluableData);
+        setObservations(''); // Reset observations on type change
 
     }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections]);
   
@@ -90,6 +92,7 @@ const Evaluate = () => {
             section: evaluationType,
             scores: scores,
             nonEvaluableData: nonEvaluableData,
+            observations: observations, // Add observations to data
             evaluationDate: serverTimestamp(),
             ...(evaluationType === 'Calidad de Desempeño' && { managementDate: new Date(managementDate) })
         };
@@ -99,6 +102,7 @@ const Evaluate = () => {
             await refreshData();
             setMessage('¡Evaluación guardada con éxito!');
             
+            // Reset form fields
             const initialScores = {};
             Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = 5; });
             setScores(initialScores);
@@ -106,6 +110,7 @@ const Evaluate = () => {
             const initialNonEvaluable = {};
             filteredNonEvaluableCriteria.forEach(c => { initialNonEvaluable[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : ''; });
             setNonEvaluableData(initialNonEvaluable);
+            setObservations('');
 
         } catch (error) {
             console.error("Error saving evaluation: ", error);
@@ -122,22 +127,22 @@ const Evaluate = () => {
             <h4 className="card-title card-title-primary">Registrar Evaluación</h4>
             <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-                <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
-                {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
-                
-                {filteredNonEvaluableCriteria.map((c) => (
-                    <div className="form-group" key={c.id}>
-                    <label>{c.name}</label>
-                    {c.inputType === 'select' ? (
-                        <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
-                        {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                    ) : (
-                        <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                    )}
-                    </div>
-                ))}
+                    <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+                    <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
+                    {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+                    
+                    {filteredNonEvaluableCriteria.map((c) => (
+                        <div className="form-group" key={c.id}>
+                        <label>{c.name}</label>
+                        {c.inputType === 'select' ? (
+                            <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
+                            {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        ) : (
+                            <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
+                        )}
+                        </div>
+                    ))}
                 </div>
                 
                 <hr style={{margin: '2rem 0'}} />
@@ -160,6 +165,19 @@ const Evaluate = () => {
                 ))}
 
                 {Object.values(groupedCriteria).every(list => list.length === 0) && <p>No hay criterios para este tipo de evaluación.</p>}
+                
+                <hr style={{margin: '2rem 0'}} />
+
+                <div className="form-group">
+                    <label>Observaciones</label>
+                    <textarea 
+                        className="form-control" 
+                        rows="4"
+                        value={observations}
+                        onChange={(e) => setObservations(e.target.value)}
+                        placeholder="Añade comentarios u observaciones adicionales sobre la evaluación..."
+                    />
+                </div>
 
                 <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
                 {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
