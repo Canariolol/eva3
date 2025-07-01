@@ -1,22 +1,28 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { instances } from './firebase-instances';
 
-// TODO: Add your web app's Firebase configuration
-// You can get this from the Firebase Console for your project
-const firebaseConfig = {
-  apiKey: "AIzaSyCzH7D38TffwS24KeLzBA37lOMc7XtaTLw",
-  authDomain: "eva3-1b284.firebaseapp.com",
-  projectId: "eva3-1b284",
-  storageBucket: "eva3-1b284.firebasestorage.app",
-  messagingSenderId: "636042825570",
-  appId: "1:636042825570:web:4841cfc98c02d30085a63b",
-  measurementId: "G-3P009KB1CM"
+// Función para obtener el subdominio de la URL actual
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  
+  // Si estamos en localhost o en una URL sin subdominio (ej: tu-dominio.com),
+  // no hay un subdominio de cliente específico.
+  if (parts.length < 3 || parts[0] === 'www') {
+    return null;
+  }
+  
+  return parts[0];
 };
 
-// Initialize Firebase
+// Determina qué configuración de Firebase usar
+const subdomain = getSubdomain();
+const firebaseConfig = instances[subdomain] || instances['default'];
+
+// Inicializa Firebase con la configuración seleccionada
 const app = initializeApp(firebaseConfig);
 
-// Get a Firestore instance
-// This 'db' object is what you'll use to interact with your database.
+// Obtiene una instancia de Firestore
+// Este objeto 'db' es el que se usará para interactuar con la base de datos.
 export const db = getFirestore(app);

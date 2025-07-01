@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { GlobalProvider, useGlobalContext } from './context/GlobalContext';
+import { db } from './firebase'; // Importar 'db' para obtener la configuración
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
@@ -14,6 +15,9 @@ import './components/Header.css';
 const AppLayout = () => {
   const { loading, error } = useGlobalContext();
   const location = useLocation();
+
+  // Obtener el ID del proyecto de Firebase directamente desde la instancia de la base de datos
+  const projectId = db.app.options.projectId;
 
   if (loading) {
     return (
@@ -33,6 +37,23 @@ const AppLayout = () => {
   
   return (
     <div className="app-layout">
+      {/* Indicador de instancia visible solo en modo desarrollo */}
+      {import.meta.env.DEV && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '20px',
+          backgroundColor: '#ffc107',
+          color: 'black',
+          padding: '5px 10px',
+          borderRadius: '5px',
+          fontSize: '14px',
+          zIndex: 9999,
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+        }}>
+          Conectado a: <strong>{projectId}</strong>
+        </div>
+      )}
       <nav className="sidebar">
         <div className="sidebar-header">
           <h3>Eva3</h3>
