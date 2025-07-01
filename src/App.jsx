@@ -1,6 +1,7 @@
-import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, Outlet } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { GlobalProvider, useGlobalContext } from './context/GlobalContext';
+import { TransitionGroup, CSSTransition } from 'react-transition-group';
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
@@ -10,12 +11,9 @@ import Footer from './components/Footer';
 import Header from './components/Header';
 import './components/Header.css';
 
-const AnimatedPage = ({ children }) => (
-    <div className="page-fade-in">{children}</div>
-);
-
 const AppLayout = () => {
   const { loading, error } = useGlobalContext();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -50,7 +48,15 @@ const AppLayout = () => {
       <div className="main-panel">
         <Header />
         <main className="main-content">
-          <Outlet />
+          <TransitionGroup>
+            <CSSTransition
+              key={location.key}
+              classNames="page-fade"
+              timeout={300}
+            >
+              <Outlet />
+            </CSSTransition>
+          </TransitionGroup>
         </main>
         <Footer />
       </div>
@@ -58,17 +64,25 @@ const AppLayout = () => {
   )
 };
 
+const PageRoutes = () => {
+    return (
+        <Routes>
+            <Route index element={<Dashboard />} />
+            <Route path="team" element={<Team />} />
+            <Route path="evaluate" element={<Evaluate />} />
+            <Route path="configuration" element={<Configuration />} />
+        </Routes>
+    )
+}
+
 function App() {
   return (
     <GlobalProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<AppLayout />}>
-            <Route index element={<AnimatedPage><Dashboard /></AnimatedPage>} />
-            <Route path="team" element={<AnimatedPage><Team /></AnimatedPage>} />
-            <Route path="evaluate" element={<AnimatedPage><Evaluate /></AnimatedPage>} />
-            <Route path="configuration" element={<AnimatedPage><Configuration /></AnimatedPage>} />
-          </Route>
+            <Route path="*" element={<AppLayout />}>
+                 <Route path="*" element={<PageRoutes />} />
+            </Route>
         </Routes>
       </Router>
     </GlobalProvider>
