@@ -28,7 +28,7 @@ const Evaluate = () => {
         getDocs(query(collection(db, 'executives'), orderBy('Nombre'))),
         getDocs(query(collection(db, 'criteria'), orderBy('name'))),
         getDocs(query(collection(db, 'nonEvaluableCriteria'), orderBy('name'))),
-        getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('name')))
+        getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order')))
       ]);
       
       setExecutives(executivesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -58,18 +58,19 @@ const Evaluate = () => {
     
     // Group criteria by subsection for "Aptitudes Transversales"
     if (evaluationType === 'Aptitudes Transversales') {
-        const groups = aptitudeSubsections.reduce((acc, sub) => {
-            acc[sub.name] = [];
+        const subsectionNamesInOrder = [...aptitudeSubsections.map(s => s.name), 'Sin Subsección'];
+        const groups = subsectionNamesInOrder.reduce((acc, subName) => {
+            acc[subName] = [];
             return acc;
         }, {});
-        groups['Sin Subsección'] = [];
 
         filteredEvaluable.forEach(c => {
             const groupName = c.subsection || 'Sin Subsección';
             if (groups[groupName]) {
                 groups[groupName].push(c);
             } else {
-                 groups['Sin Subsección'].push(c);
+                if(!groups['Sin Subsección']) groups['Sin Subsección'] = [];
+                groups['Sin Subsección'].push(c);
             }
         });
         setGroupedCriteria(groups);
@@ -172,7 +173,7 @@ const Evaluate = () => {
         <hr style={{margin: '2rem 0'}} />
         
         {/* Evaluable criteria, grouped */}
-        {Object.entries(groupedCriteria).map(([groupName, criteriaList]) => (
+        {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
             criteriaList.length > 0 && (
                 <div key={groupName}>
                     {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
@@ -182,6 +183,9 @@ const Evaluate = () => {
                             <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
                         </div>
                     ))}
+                    {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
+                        <hr style={{ margin: '2.5rem 0', border: '1px solid #eee' }} />
+                    )}
                 </div>
             )
         ))}

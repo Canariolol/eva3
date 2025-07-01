@@ -264,12 +264,18 @@ const Dashboard = () => {
   const transversalDataBar = processDataForBarChart(evaluations, 'Aptitudes Transversales', criteriaConfig, transversalChartState);
   const transversalNonEvaluable = processNonEvaluableData(transversalEvaluations, nonEvaluableCriteria, 'Aptitudes Transversales');
   const transversalExecutiveAverages = processExecutiveAverages(transversalEvaluations);
+  const transversalOverallAverage = transversalEvaluations.length > 0
+    ? transversalEvaluations.flatMap(e => Object.values(e.scores)).reduce((a, b) => a + b, 0) / transversalEvaluations.flatMap(e => Object.values(e.scores)).length
+    : 0;
   
   const performanceEvaluations = evaluations.filter(e => e.section === 'Calidad de Desempeño');
   const performanceDataLine = processDataForLineChart(performanceEvaluations.filter(e => e.managementDate).sort((a,b) => a.managementDate - b.managementDate), 'managementDate');
   const performanceDataBar = processDataForBarChart(evaluations, 'Calidad de Desempeño', criteriaConfig);
   const performanceNonEvaluable = processNonEvaluableData(performanceEvaluations, nonEvaluableCriteria, 'Calidad de Desempeño');
   const performanceExecutiveAverages = processExecutiveAverages(performanceEvaluations);
+  const performanceOverallAverage = performanceEvaluations.length > 0
+    ? performanceEvaluations.flatMap(e => Object.values(e.scores)).reduce((a, b) => a + b, 0) / performanceEvaluations.flatMap(e => Object.values(e.scores)).length
+    : 0;
 
   const pluralize = (count, singular, plural) => (count === 1 ? singular : plural || `${singular}s`);
 
@@ -292,6 +298,45 @@ const Dashboard = () => {
     </div>
   );
 
+  const renderAdditionalMetricsCard = (title, evaluations, nonEvaluable, overallAverage, color) => (
+    <div className="card" style={{flex: 1}}>
+      <h4>{title}</h4>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', height: 'calc(100% - 2.5rem)' }}>
+        <div style={{ flex: 1, paddingRight: '1rem', overflowY: 'auto' }}>
+          <p><strong>{pluralize(evaluations.length, 'Evaluación Realizada', 'Evaluaciones Realizadas')}:</strong> {evaluations.length}</p>
+          {nonEvaluable.map(metric => (
+            <div key={metric.name}>
+              {metric.type === 'select' ? (
+                <>
+                  <p style={{marginTop: '1rem'}}><strong>{metric.name}:</strong></p>
+                  <ul style={{listStylePosition: 'inside', paddingLeft: '1rem', margin: 0}}>
+                    {Object.entries(metric.counts).map(([option, count]) => (
+                      <li key={option}>{pluralize(count, option)}: {count}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p><strong>{pluralize(metric.count, metric.name)}:</strong> {metric.count}</p>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {overallAverage > 0 && (
+          <>
+            <div style={{ borderLeft: '1px solid #ccc', margin: '0 1rem' }}></div>
+            <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingLeft: '1rem' }}>
+                <p style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color-light)', textAlign: 'center' }}>Promedio General</p>
+                <p style={{ margin: 0, fontSize: '2.8rem', fontWeight: 'bold', lineHeight: 1.2, color: color }}>
+                    {overallAverage.toFixed(2)}
+                </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <h1>Dashboard de Evaluaciones</h1>
@@ -301,29 +346,10 @@ const Dashboard = () => {
           <div className="card"><h4>Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={performanceDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
           <div className="card"><h4>Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={performanceDataBar}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, 10]} /><Tooltip /><Legend /><Bar dataKey="Puntaje Promedio" fill="var(--color-success)" /></BarChart></ResponsiveContainer></div>
         </div>
-        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
-            {(performanceNonEvaluable.length > 0 || performanceEvaluations.length > 0) && (
-              <div className="card" style={{flex: 1}}>
-                <h4>Métricas Adicionales</h4>
-                <p><strong>{pluralize(performanceEvaluations.length, 'Evaluación Realizada', 'Evaluaciones Realizadas')}:</strong> {performanceEvaluations.length}</p>
-                {performanceNonEvaluable.map(metric => (
-                  <div key={metric.name}>
-                    {metric.type === 'select' ? (
-                      <>
-                        <p style={{marginTop: '1rem'}}><strong>{metric.name}:</strong></p>
-                        <ul style={{listStylePosition: 'inside', paddingLeft: '1rem', margin: 0}}>
-                          {Object.entries(metric.counts).map(([option, count]) => (
-                            <li key={option}>{pluralize(count, option)}: {count}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <p><strong>{pluralize(metric.count, metric.name)}:</strong> {metric.count}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', alignItems: 'stretch' }}>
+            {(performanceNonEvaluable.length > 0 || performanceEvaluations.length > 0) && 
+              renderAdditionalMetricsCard('Métricas Adicionales', performanceEvaluations, performanceNonEvaluable, performanceOverallAverage, 'var(--color-success)')
+            }
             {performanceExecutiveAverages.length > 0 && renderExecutiveSummary(performanceExecutiveAverages, 'Calidad de Desempeño')}
         </div>
       </section>
@@ -345,29 +371,10 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
-            {(transversalNonEvaluable.length > 0 || transversalEvaluations.length > 0) && (
-              <div className="card" style={{flex: 1}}>
-                <h4>Métricas Adicionales</h4>
-                <p><strong>{pluralize(transversalEvaluations.length, 'Evaluación Realizada', 'Evaluaciones Realizadas')}:</strong> {transversalEvaluations.length}</p>
-                {transversalNonEvaluable.map(metric => (
-                   <div key={metric.name}>
-                    {metric.type === 'select' ? (
-                      <>
-                        <p style={{marginTop: '1rem'}}><strong>{metric.name}:</strong></p>
-                        <ul style={{listStylePosition: 'inside', paddingLeft: '1rem', margin: 0}}>
-                          {Object.entries(metric.counts).map(([option, count]) => (
-                            <li key={option}>{pluralize(count, option)}: {count}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <p><strong>{pluralize(metric.count, metric.name)}:</strong> {metric.count}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', alignItems: 'stretch' }}>
+            {(transversalNonEvaluable.length > 0 || transversalEvaluations.length > 0) && 
+              renderAdditionalMetricsCard('Métricas Adicionales', transversalEvaluations, transversalNonEvaluable, transversalOverallAverage, 'var(--color-primary)')
+            }
             {transversalExecutiveAverages.length > 0 && renderExecutiveSummary(transversalExecutiveAverages, 'Aptitudes Transversales')}
         </div>
       </section>

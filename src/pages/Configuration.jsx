@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, doc, deleteDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch } from 'firebase/firestore';
 
 const Configuration = () => {
     const [executiveFields, setExecutiveFields] = useState([]);
@@ -33,7 +33,7 @@ const Configuration = () => {
                 getDocs(query(collection(db, 'criteria'), orderBy('name'))),
                 getDocs(query(collection(db, 'nonEvaluableCriteria'), orderBy('name'))),
                 getDocs(query(collection(db, 'executives'), orderBy('Nombre'))),
-                getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('name'))),
+                getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order'))),
                 getDocs(collection(db, 'headerInfo'))
             ]);
 
@@ -50,10 +50,54 @@ const Configuration = () => {
                 setExecutiveFields(fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             }
             
-            setCriteria(criteriaSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            const fetchedCriteria = criteriaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setCriteria(fetchedCriteria);
+
+            let subsections = subsectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const existingSubsectionNames = new Set(subsections.map(s => s.name));
+            const subsectionsFromCriteria = new Set(
+                fetchedCriteria
+                    .filter(c => c.section === 'Aptitudes Transversales' && c.subsection)
+                    .map(c => c.subsection)
+            );
+
+            const newSubsectionsToAdd = [];
+            for (const subName of subsectionsFromCriteria) {
+                if (!existingSubsectionNames.has(subName)) {
+                    newSubsectionsToAdd.push({ name: subName });
+                }
+            }
+            
+            if (newSubsectionsToAdd.length > 0) {
+                let maxOrder = subsections.reduce((max, s) => (s.order > max ? s.order : max), 0);
+                const batch = writeBatch(db);
+                newSubsectionsToAdd.forEach(sub => {
+                    maxOrder++;
+                    const newSubDocRef = doc(collection(db, 'aptitudeSubsections'));
+                    batch.set(newSubDocRef, { ...sub, order: maxOrder });
+                });
+                await batch.commit();
+    
+                const newSubsectionsSnap = await getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order')));
+                subsections = newSubsectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+
+            const subsectionsWithoutOrder = subsections.filter(s => s.order === undefined);
+            if (subsectionsWithoutOrder.length > 0) {
+                let maxOrder = subsections.reduce((max, s) => (s.order > max ? s.order : max), 0);
+                const updates = subsectionsWithoutOrder.map(subsection => {
+                    maxOrder++;
+                    subsection.order = maxOrder;
+                    return setDoc(doc(db, 'aptitudeSubsections', subsection.id), { order: maxOrder }, { merge: true });
+                });
+                await Promise.all(updates);
+                subsections.sort((a, b) => a.order - b.order);
+            }
+
+            setAptitudeSubsections(subsections);
             setNonEvaluableCriteria(nonEvaluableSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             setExecutives(execSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setAptitudeSubsections(subsectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             
             if (!headerSnap.empty) {
                 const headerDoc = headerSnap.docs[0];
@@ -68,6 +112,7 @@ const Configuration = () => {
             setLoading(false);
         }
     }, []);
+
 
     useEffect(() => {
         fetchData();
@@ -119,7 +164,8 @@ const Configuration = () => {
     
     const handleSaveSubsection = async () => {
         if (!newSubsection.name) return;
-        await addDoc(collection(db, 'aptitudeSubsections'), newSubsection);
+        const maxOrder = aptitudeSubsections.reduce((max, sub) => (sub.order > max ? sub.order : max), 0);
+        await addDoc(collection(db, 'aptitudeSubsections'), { ...newSubsection, order: maxOrder + 1 });
         await fetchData(); 
         setNewCriterion(prev => ({...prev, subsection: newSubsection.name}));
         setNewSubsection({ name: '' });
@@ -154,10 +200,40 @@ const Configuration = () => {
     
     const handleDelete = async (collectionName, id) => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
+            if (collectionName === 'aptitudeSubsections') {
+                const subsectionToDelete = aptitudeSubsections.find(s => s.id === id);
+                const criteriaUsingSubsection = criteria.filter(c => c.subsection === subsectionToDelete?.name);
+                if (criteriaUsingSubsection.length > 0) {
+                    setError(`No se puede eliminar la subsección porque está siendo usada por ${criteriaUsingSubsection.length} criterio(s).`);
+                    setTimeout(() => setError(''), 5000);
+                    return;
+                }
+            }
             await deleteDoc(doc(db, collectionName, id));
             fetchData();
         }
     };
+
+    const handleMoveSubsection = async (subsectionId, direction) => {
+        const subs = [...aptitudeSubsections];
+        const index = subs.findIndex(s => s.id === subsectionId);
+        if (index === -1) return;
+    
+        const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
+        if (swapIndex < 0 || swapIndex >= subs.length) return;
+    
+        const sub1 = subs[index];
+        const sub2 = subs[swapIndex];
+    
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'aptitudeSubsections', sub1.id), { order: sub2.order });
+        batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub1.order });
+    
+        await batch.commit();
+        fetchData();
+    };
+
 
     if (loading) return <h1>Cargando...</h1>;
 
@@ -166,6 +242,16 @@ const Configuration = () => {
     const calidadCriteria = criteria.filter(c => c.section === 'Calidad de Desempeño');
     const aptitudesNonEvaluable = nonEvaluableCriteria.filter(c => c.section === 'Aptitudes Transversales');
     const calidadNonEvaluable = nonEvaluableCriteria.filter(c => c.section === 'Calidad de Desempeño');
+
+    const groupedAptitudesCriteria = aptitudesCriteria.reduce((acc, criterion) => {
+        const subsection = criterion.subsection || 'Sin Subsección';
+        if (!acc[subsection]) {
+            acc[subsection] = [];
+        }
+        acc[subsection].push(criterion);
+        return acc;
+    }, {});
+
 
     return (
         <div>
@@ -234,12 +320,63 @@ const Configuration = () => {
                     <hr style={{margin: '2rem 0'}}/>
                     <h4 style={{marginTop: '0'}}>Listado de Criterios</h4>
                     <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)'}}>Aptitudes Transversales</h5>
-                    <ul className="config-list">
-                        {aptitudesCriteria.map(c => <li key={c.id} className="config-list-item"><span>{c.name} {c.subsection && `(${c.subsection})`}</span><button onClick={() => handleDelete('criteria', c.id)} className="btn-icon btn-icon-danger">🗑️</button></li>)}
-                    </ul>
+                    {Object.entries(groupedAptitudesCriteria).map(([subsection, criteriaList]) => (
+                        <div key={subsection}>
+                            <h6 style={{ marginTop: '1rem', fontWeight: 'bold' }}>{subsection}</h6>
+                            <ul className="config-list">
+                                {criteriaList.map(c => (
+                                    <li key={c.id} className="config-list-item">
+                                        <span>{c.name}</span>
+                                        <button onClick={() => handleDelete('criteria', c.id)} className="btn-icon btn-icon-danger">🗑️</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
                     <h5 style={{fontWeight: 'normal', color: 'var(--color-secondary)', marginTop: '1.5rem'}}>Calidad de Desempeño</h5>
                     <ul className="config-list">
                          {calidadCriteria.map(c => <li key={c.id} className="config-list-item"><span>{c.name}</span><button onClick={() => handleDelete('criteria', c.id)} className="btn-icon btn-icon-danger">🗑️</button></li>)}
+                    </ul>
+                </div>
+                 <div className="card">
+                    <h2>Ordenar Subsecciones de Aptitudes</h2>
+                    <p className="text-muted" style={{marginBottom: '1rem', fontSize: '0.9rem'}}>
+                        Usa los botones para cambiar el orden en que aparecen las subsecciones.
+                    </p>
+                    <ul className="config-list">
+                        {aptitudeSubsections.map((sub, index) => (
+                            <li key={sub.id} className="config-list-item">
+                                <span>{sub.name}</span>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button 
+                                        className="btn-icon" 
+                                        onClick={() => handleMoveSubsection(sub.id, 'up')}
+                                        disabled={index === 0}
+                                        aria-label={`Mover ${sub.name} hacia arriba`}
+                                        title="Mover hacia arriba"
+                                    >
+                                        ↑
+                                    </button>
+                                    <button 
+                                        className="btn-icon" 
+                                        onClick={() => handleMoveSubsection(sub.id, 'down')}
+                                        disabled={index === aptitudeSubsections.length - 1}
+                                        aria-label={`Mover ${sub.name} hacia abajo`}
+                                        title="Mover hacia abajo"
+                                    >
+                                        ↓
+                                    </button>
+                                    <button 
+                                        className="btn-icon btn-icon-danger" 
+                                        onClick={() => handleDelete('aptitudeSubsections', sub.id)}
+                                        aria-label={`Eliminar ${sub.name}`}
+                                        title="Eliminar"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
                     </ul>
                 </div>
                 <div className="card">
