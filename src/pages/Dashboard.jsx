@@ -2,6 +2,30 @@ import React, { useState } from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const truncateName = (name) => {
+    const words = name.split(' ');
+    if (words.length > 1) {
+        return `${words[0]}...`;
+    }
+    return name;
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="custom-tooltip" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+        <p className="label" style={{ margin: 0, fontWeight: 'bold', color: '#333' }}>{payload[0].payload.name}</p>
+        <p className="intro" style={{ margin: '5px 0 0' }}>
+          <span style={{ color: payload[0].fill }}>{`${payload[0].name}: `}</span>
+          <span style={{ fontWeight: 'bold' }}>{payload[0].value.toFixed(2)}</span>
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const processDataForLineChart = (evaluations, dateField = 'date') => {
   const dataByDate = evaluations.reduce((acc, curr) => {
     const dateValue = curr[dateField];
@@ -28,7 +52,7 @@ const processDataForLineChart = (evaluations, dateField = 'date') => {
     Object.keys(dateEntry).forEach(key => {
       if (key !== 'date') {
         const executiveScores = dateEntry[key];
-        newDateEntry[key] = executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length;
+        newDateEntry[key] = parseFloat((executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length).toFixed(2));
       }
     });
     return newDateEntry;
@@ -61,6 +85,7 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
             });
             return Object.entries(dataByCriterion).map(([name, scores]) => ({
                 name,
+                shortName: truncateName(name),
                 'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
             }));
         }
@@ -74,6 +99,7 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
             });
              return Object.entries(dataByCriterion).map(([name, scores]) => ({
                 name,
+                shortName: truncateName(name),
                 'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
             }));
         }
@@ -91,6 +117,7 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
             });
             return Object.entries(dataBySubsection).map(([name, scores]) => ({
                 name,
+                shortName: truncateName(name),
                 'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
             }));
         }
@@ -108,6 +135,7 @@ const processDataForBarChart = (evaluations, section, criteriaConfig, chartState
 
   return Object.entries(dataByCriterion).map(([name, scores]) => ({
     name: name,
+    shortName: truncateName(name),
     'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
   }));
 };
@@ -307,7 +335,7 @@ const Dashboard = () => {
             <h2>Calidad de Desempeño</h2>
             <div className="dashboard-grid">
             <div className="card"><h4 className="card-title card-title-success">Progreso Comparativo</h4><ResponsiveContainer width="100%" height={300}><LineChart data={performanceDataLine}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name]} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer></div>
-            <div className="card"><h4 className="card-title card-title-success">Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={performanceDataBar}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, 10]} /><Tooltip /><Legend /><Bar dataKey="Puntaje Promedio" fill="var(--color-success)" /></BarChart></ResponsiveContainer></div>
+            <div className="card"><h4 className="card-title card-title-success">Promedio por Criterio</h4><ResponsiveContainer width="100%" height={300}><BarChart data={performanceDataBar} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={[0, 10]} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="Puntaje Promedio" fill="var(--color-success)" /></BarChart></ResponsiveContainer></div>
             </div>
             <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', alignItems: 'stretch' }}>
                 {(performanceNonEvaluable.length > 0 || performanceEvaluations.length > 0) && 
@@ -323,12 +351,11 @@ const Dashboard = () => {
             <div className="card">
                 <h4 className="card-title card-title-primary">{getTransversalChartTitle()}</h4>
                 <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={transversalDataBar} onClick={handleTransversalChartClick}>
+                <BarChart data={transversalDataBar} onClick={handleTransversalChartClick} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
+                    <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 10]} />
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="Puntaje Promedio" fill="var(--color-primary)" />
                 </BarChart>
                 </ResponsiveContainer>

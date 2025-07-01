@@ -2,6 +2,22 @@ import React, { useState } from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="custom-tooltip" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+        <p className="label" style={{ margin: 0, fontWeight: 'bold', color: '#333' }}>{payload[0].payload.name}</p>
+        <p className="intro" style={{ margin: '5px 0 0' }}>
+          <span style={{ color: payload[0].fill }}>{`${payload[0].name}: `}</span>
+          <span style={{ fontWeight: 'bold' }}>{payload[0].value.toFixed(2)}</span>
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const Modal = ({ children, onClose, size = 'default' }) => {
     const [isClosing, setIsClosing] = useState(false);
 
@@ -35,6 +51,15 @@ const Team = () => {
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
     
+    // Function to truncate the name to the first word and add "..."
+    const truncateName = (name) => {
+        const words = name.split(' ');
+        if (words.length > 1) {
+            return `${words[0]}...`;
+        }
+        return name;
+    };
+    
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
 
@@ -56,7 +81,8 @@ const Team = () => {
             });
 
             return Object.entries(criteria).map(([name, scores]) => ({
-                name,
+                name: name, // Full name for the tooltip
+                shortName: truncateName(name), // Truncated name for the axis
                 Promedio: scores.reduce((a, b) => a + b, 0) / scores.length,
             }));
         };
@@ -73,26 +99,24 @@ const Team = () => {
                 <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
                     <div style={{ flex: 1 }}>
                         <h4>Aptitudes Transversales</h4>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={getChartData(aptitudesEvals)}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={getChartData(aptitudesEvals)} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
+                                <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} />
                                 <YAxis domain={[0, 10]} />
-                                <Tooltip />
-                                <Legend />
+                                <Tooltip content={<CustomTooltip />}/>
                                 <Bar dataKey="Promedio" fill="var(--color-primary)" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                     <div style={{ flex: 1 }}>
                         <h4>Calidad de Desempeño</h4>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={getChartData(calidadEvals)}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={getChartData(calidadEvals)} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
+                                <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} />
                                 <YAxis domain={[0, 10]} />
-                                <Tooltip />
-                                <Legend />
+                                <Tooltip content={<CustomTooltip />}/>
                                 <Bar dataKey="Promedio" fill="var(--color-success)" />
                             </BarChart>
                         </ResponsiveContainer>

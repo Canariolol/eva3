@@ -411,7 +411,7 @@ const Configuration = () => {
                     </ul>
                 </div>
                 <div className="card">
-                    <h4 className="card-title card-title-primary">Información del Encabezado</h4>
+                    <h4 className="card-title card-title-primary">Información de la Organización</h4>
                     <form onSubmit={handleSaveHeaderInfo}>
                         <div className="form-group">
                             <label>Nombre de la Empresa</label>
