@@ -200,7 +200,7 @@ h1 {
 .config-list {
   list-style: none;
   padding: 0;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .config-list-item {
@@ -271,6 +271,18 @@ h1 {
     font-style: italic;
     margin-left: 8px;
     cursor: help;
+}
+
+.config-list-subheader {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-top: 1.5rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.config-list-subheader:first-of-type {
+    margin-top: 0;
 }
 
 

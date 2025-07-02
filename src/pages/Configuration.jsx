@@ -78,8 +78,9 @@ const Configuration = () => {
         e.preventDefault();
         if (!newEvaluationSection.name) return;
         const maxOrder = evaluationSections.reduce((max, section) => Math.max(section.order || 0, max), 0);
-        await addDoc(collection(db, 'evaluationSections'), { ...newEvaluationSection, order: maxOrder + 1 });
-        setNewEvaluationSection({ name: '', description: '' });
+        const nextColor = ['#A7C7E7', '#C1E1C1', '#FDFD96', '#FFB347', '#FF6961', '#D1C4E9', '#B2DFDB'][evaluationSections.length % 7];
+        await addDoc(collection(db, 'evaluationSections'), { ...newEvaluationSection, order: maxOrder + 1, color: newEvaluationSection.color || nextColor });
+        setNewEvaluationSection({ name: '', description: '', color: nextColor });
         setIsAddingSection(false);
         await refreshData();
     };
@@ -186,7 +187,7 @@ const Configuration = () => {
             await refreshData();
         }
     };
-
+    
     const handleMoveSection = async (sectionId, direction) => {
         const sections = [...evaluationSections];
         const index = sections.findIndex(s => s.id === sectionId);
@@ -253,6 +254,20 @@ const Configuration = () => {
         { name: 'trackInDashboard', label: 'Seguimiento Detallado', type: 'checkbox', checkboxLabel: 'Mostrar desglose de valores en Dashboard' },
         { name: 'trackEmptyInDashboard', label: 'Conteo de Vacíos', type: 'checkbox', checkboxLabel: 'Contar valores N/A o vacíos en Dashboard' }
     ];
+
+    const groupedEvaluableCriteria = criteria.reduce((acc, criterion) => {
+        const sectionName = criterion.section || 'Sin Sección';
+        if (!acc[sectionName]) acc[sectionName] = [];
+        acc[sectionName].push(criterion);
+        return acc;
+    }, {});
+
+    const groupedNonEvaluableCriteria = nonEvaluableCriteria.reduce((acc, criterion) => {
+        const sectionName = criterion.section || 'Sin Sección';
+        if (!acc[sectionName]) acc[sectionName] = [];
+        acc[sectionName].push(criterion);
+        return acc;
+    }, {});
     
     return (
         <div>
@@ -327,6 +342,10 @@ const Configuration = () => {
                                             <label>Descripción (para tooltip)</label>
                                             <textarea className="form-control" rows="3" value={newEvaluationSection.description} onChange={(e) => setNewEvaluationSection({ ...newEvaluationSection, description: e.target.value })} />
                                         </div>
+                                        <div className="form-group">
+                                            <label>Color</label>
+                                            <input type="color" className="form-control" value={newEvaluationSection.color || '#A7C7E7'} onChange={(e) => setNewEvaluationSection({ ...newEvaluationSection, color: e.target.value })} />
+                                        </div>
                                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Sección</button>
                                     </form>
                                 )}
@@ -335,20 +354,23 @@ const Configuration = () => {
                         <ul className="config-list">
                             {evaluationSections.map((section, index) => (
                                 <li key={section.id} className="config-list-item">
-                                    <Tooltip text={section.description || 'Sin descripción'}>
-                                        <span>{section.name}</span>
-                                    </Tooltip>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                        <div style={{width: '15px', height: '15px', backgroundColor: section.color, borderRadius: '3px', border: '1px solid #ccc'}}></div>
+                                        <Tooltip text={section.description || 'Sin descripción'}>
+                                            <span>{section.name}</span>
+                                        </Tooltip>
+                                    </div>
                                     {currentUser && (
                                         <div className="config-actions">
-                                        <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
-                                        <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'down')} disabled={index === evaluationSections.length - 1} title="Mover hacia abajo">↓</button>
-                                        <button className="btn-icon" onClick={() => handleEditClick(section, 'evaluationSections', [
-                                            { name: 'name', label: 'Nombre de la Sección' },
-                                            { name: 'description', label: 'Descripción', type: 'textarea' },
-                                            { name: 'color', label: 'Color', type: 'color' }
-                                        ])}>✏️</button>
-                                        {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('evaluationSections', section.id)}>🗑️</button>}
-                                    </div>
+                                            <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
+                                            <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'down')} disabled={index === evaluationSections.length - 1} title="Mover hacia abajo">↓</button>
+                                            <button className="btn-icon" onClick={() => handleEditClick(section, 'evaluationSections', [
+                                                { name: 'name', label: 'Nombre de la Sección' },
+                                                { name: 'description', label: 'Descripción', type: 'textarea' },
+                                                { name: 'color', label: 'Color', type: 'color' }
+                                            ])}>✏️</button>
+                                            {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('evaluationSections', section.id)}>🗑️</button>}
+                                        </div>
                                     )}
                                 </li>
                             ))}
@@ -397,21 +419,26 @@ const Configuration = () => {
                         )}
                         <hr style={{margin: '2rem 0'}}/>
                         <h5 style={{marginTop: '0'}}>Listado de Criterios</h5>
-                        <ul className="config-list">
-                            {criteria.map(item => (
-                                <li key={item.id} className="config-list-item">
-                                    <Tooltip text={item.description || 'Sin descripción'}>
-                                        <span>{item.name}</span>
-                                    </Tooltip>
-                                    {currentUser && (
-                                        <div className="config-actions">
-                                            <button className="btn-icon" onClick={() => handleEditClick(item, 'criteria', getEvaluableEditFields(item))}>✏️</button>
-                                            <button onClick={() => handleDelete('criteria', item.id)} className="btn-icon btn-icon-danger">🗑️</button>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        {Object.keys(groupedEvaluableCriteria).map(sectionName => (
+                            <div key={sectionName}>
+                                <h5 className="config-list-subheader">{sectionName}</h5>
+                                <ul className="config-list">
+                                    {groupedEvaluableCriteria[sectionName].map(item => (
+                                        <li key={item.id} className="config-list-item">
+                                            <Tooltip text={item.description || 'Sin descripción'}>
+                                                <span>{item.name}</span>
+                                            </Tooltip>
+                                            {currentUser && (
+                                                <div className="config-actions">
+                                                    <button className="btn-icon" onClick={() => handleEditClick(item, 'criteria', getEvaluableEditFields(item))}>✏️</button>
+                                                    <button onClick={() => handleDelete('criteria', item.id)} className="btn-icon btn-icon-danger">🗑️</button>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
                     </CollapsibleCard>
                 </div>
 
@@ -507,21 +534,26 @@ const Configuration = () => {
                         )}
                         <hr style={{margin: '2rem 0'}}/>
                         <h5 style={{marginTop: '0'}}>Listado de Criterios</h5>
-                        <ul className="config-list">
-                            {nonEvaluableCriteria.map(item => (
-                                <li key={item.id} className="config-list-item">
-                                    <Tooltip text={item.description || 'Sin descripción'}>
-                                        <span>{item.name} {getNonEvaluableSubtitle(item)}</span>
-                                    </Tooltip>
-                                    {currentUser && (
-                                        <div className="config-actions">
-                                            <button className="btn-icon" onClick={() => handleEditClick(item, 'nonEvaluableCriteria', getNonEvaluableEditFields(item))}>✏️</button>
-                                            <button onClick={() => handleDelete('nonEvaluableCriteria', item.id)} className="btn-icon btn-icon-danger">🗑️</button>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        {Object.keys(groupedNonEvaluableCriteria).map(sectionName => (
+                            <div key={sectionName}>
+                                <h5 className="config-list-subheader">{sectionName}</h5>
+                                <ul className="config-list">
+                                    {groupedNonEvaluableCriteria[sectionName].map(item => (
+                                        <li key={item.id} className="config-list-item">
+                                            <Tooltip text={item.description || 'Sin descripción'}>
+                                                <span>{item.name} {getNonEvaluableSubtitle(item)}</span>
+                                            </Tooltip>
+                                            {currentUser && (
+                                                <div className="config-actions">
+                                                    <button className="btn-icon" onClick={() => handleEditClick(item, 'nonEvaluableCriteria', getNonEvaluableEditFields(item))}>✏️</button>
+                                                    <button onClick={() => handleDelete('nonEvaluableCriteria', item.id)} className="btn-icon btn-icon-danger">🗑️</button>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
                     </CollapsibleCard>
                 </div>
                 
