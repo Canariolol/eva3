@@ -3,27 +3,31 @@ import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import ScoreSelector from '../components/ScoreSelector';
+import Tooltip from '../components/Tooltip';
 import '../components/ScoreSelector.css';
 
 const Evaluate = () => {
-    const { executives, criteria, nonEvaluableCriteria, aptitudeSubsections, refreshData } = useGlobalContext();
+    const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, refreshData } = useGlobalContext();
     
-    const [evaluationType, setEvaluationType] = useState('Aptitudes Transversales');
+    const [evaluationType, setEvaluationType] = useState('');
     const [groupedCriteria, setGroupedCriteria] = useState({});
     const [filteredNonEvaluableCriteria, setFilteredNonEvaluableCriteria] = useState([]);
     const [selectedExecutive, setSelectedExecutive] = useState('');
     const [scores, setScores] = useState({});
     const [nonEvaluableData, setNonEvaluableData] = useState({});
     const [managementDate, setManagementDate] = useState(new Date().toISOString().slice(0, 10));
-    const [observations, setObservations] = useState(''); // State for observations
+    const [observations, setObservations] = useState('');
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        if (evaluationSections.length > 0) {
+            setEvaluationType(evaluationSections[0].name);
+        }
         if (executives.length > 0) {
             setSelectedExecutive(executives[0].Nombre);
         }
-    }, [executives]);
+    }, [executives, evaluationSections]);
 
     useEffect(() => {
         const filteredEvaluable = criteria.filter(c => c.section === evaluationType);
@@ -31,10 +35,7 @@ const Evaluate = () => {
         
         if (evaluationType === 'Aptitudes Transversales') {
             const subsectionNamesInOrder = [...aptitudeSubsections.map(s => s.name), 'Sin Subsección'];
-            const groups = subsectionNamesInOrder.reduce((acc, subName) => {
-                acc[subName] = [];
-                return acc;
-            }, {});
+            const groups = subsectionNamesInOrder.reduce((acc, subName) => ({ ...acc, [subName]: [] }), {});
 
             filteredEvaluable.forEach(c => {
                 const groupName = c.subsection || 'Sin Subsección';
@@ -61,7 +62,7 @@ const Evaluate = () => {
             initialNonEvaluableData[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : '';
         });
         setNonEvaluableData(initialNonEvaluableData);
-        setObservations(''); // Reset observations on type change
+        setObservations('');
 
     }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections]);
   
@@ -92,7 +93,7 @@ const Evaluate = () => {
             section: evaluationType,
             scores: scores,
             nonEvaluableData: nonEvaluableData,
-            observations: observations, // Add observations to data
+            observations: observations,
             evaluationDate: serverTimestamp(),
             ...(evaluationType === 'Calidad de Desempeño' && { managementDate: new Date(managementDate) })
         };
@@ -102,7 +103,6 @@ const Evaluate = () => {
             await refreshData();
             setMessage('¡Evaluación guardada con éxito!');
             
-            // Reset form fields
             const initialScores = {};
             Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = 5; });
             setScores(initialScores);
@@ -120,7 +120,7 @@ const Evaluate = () => {
         }
     };
   
-    if (executives.length === 0) return (<div><h1>Faltan Datos</h1><p>Añade ejecutivos y criterios en <b>Configuración</b>.</p></div>);
+    if (executives.length === 0 || evaluationSections.length === 0) return (<div><h1>Faltan Datos</h1><p>Añade ejecutivos, secciones y criterios en <b>Configuración</b>.</p></div>);
 
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
@@ -128,19 +128,21 @@ const Evaluate = () => {
             <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-                    <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}><option value="Aptitudes Transversales">Aptitudes Transversales</option><option value="Calidad de Desempeño">Calidad de Desempeño</option></select></div>
+                    <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
                     {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
-                        <label>{c.name}</label>
-                        {c.inputType === 'select' ? (
-                            <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
-                            {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
-                        ) : (
-                            <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                        )}
+                            <Tooltip text={c.description || 'Sin descripción'}>
+                                <label>{c.name}</label>
+                            </Tooltip>
+                            {c.inputType === 'select' ? (
+                                <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
+                                {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            ) : (
+                                <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
+                            )}
                         </div>
                     ))}
                 </div>
@@ -153,7 +155,9 @@ const Evaluate = () => {
                             {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
-                                    <label>{index + 1}. {c.name}</label>
+                                    <Tooltip text={c.description || 'Sin descripción'}>
+                                        <label>{index + 1}. {c.name}</label>
+                                    </Tooltip>
                                     <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
                                 </div>
                             ))}

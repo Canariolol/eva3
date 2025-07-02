@@ -1,0 +1,29 @@
+.collapsible-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.collapsible-content {
+    transition: max-height 0.5s ease-in-out;
+    overflow: hidden;
+}
+
+.collapsible-card.collapsible .collapsible-footer {
+    padding-top: 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.collapsible-footer .fader {
+    position: absolute;
+    bottom: 60px; /* Adjust to be above the button */
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, var(--color-background));
+    pointer-events: none;
+}
+
+.collapsible-footer .btn {
+    width: 100%;
+}

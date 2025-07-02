@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, doc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, setDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 const GlobalContext = createContext();
 
@@ -13,14 +13,13 @@ export const GlobalProvider = ({ children }) => {
     const [evaluations, setEvaluations] = useState([]);
     const [aptitudeSubsections, setAptitudeSubsections] = useState([]);
     const [executiveFields, setExecutiveFields] = useState([]);
+    const [evaluationSections, setEvaluationSections] = useState([]);
     const [headerInfo, setHeaderInfo] = useState({ company: '', area: '', manager: '' });
     const [headerInfoId, setHeaderInfoId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const fetchData = useCallback(async () => {
-        // Don't set loading to true here to avoid showing loading on refresh
-        // setLoading(true); 
         try {
             const [
                 fieldsSnap,
@@ -29,6 +28,7 @@ export const GlobalProvider = ({ children }) => {
                 nonEvaluableCriteriaSnap,
                 evaluationsSnap,
                 subsectionsSnap,
+                sectionsSnap,
                 headerSnap
             ] = await Promise.all([
                 getDocs(query(collection(db, 'executiveFields'), orderBy('order'))),
@@ -37,10 +37,31 @@ export const GlobalProvider = ({ children }) => {
                 getDocs(query(collection(db, 'nonEvaluableCriteria'), orderBy('name'))),
                 getDocs(query(collection(db, 'evaluations'), orderBy('evaluationDate', 'desc'))),
                 getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order'))),
+                getDocs(query(collection(db, 'evaluationSections'), orderBy('order'))),
                 getDocs(collection(db, 'headerInfo'))
             ]);
             
-             if (fieldsSnap.empty) {
+            // Default sections logic
+            if (sectionsSnap.empty) {
+                const batch = writeBatch(db);
+                const defaultSections = [
+                    { id: 'aptitudesTransversales', data: { name: 'Aptitudes Transversales', order: 1, description: 'Habilidades blandas y competencias generales.' }},
+                    { id: 'calidadDesempeno', data: { name: 'Calidad de Desempeño', order: 2, description: 'Rendimiento y calidad del trabajo específico.' }}
+                ];
+                
+                defaultSections.forEach(section => {
+                    const docRef = doc(db, 'evaluationSections', section.id);
+                    batch.set(docRef, section.data);
+                });
+
+                await batch.commit();
+                const newSectionsSnap = await getDocs(query(collection(db, 'evaluationSections'), orderBy('order')));
+                setEvaluationSections(newSectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            } else {
+                setEvaluationSections(sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            }
+
+            if (fieldsSnap.empty) {
                 const defaultFields = [
                     { name: 'Nombre', order: 1, isDefault: true },
                     { name: 'Cargo', order: 2, isDefault: true },
@@ -89,6 +110,7 @@ export const GlobalProvider = ({ children }) => {
         evaluations,
         aptitudeSubsections,
         executiveFields,
+        evaluationSections,
         headerInfo,
         headerInfoId,
         loading,
