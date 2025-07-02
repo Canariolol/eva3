@@ -19,6 +19,16 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
+        // DEVELOPMENT-ONLY: Bypasses the login screen for a smoother dev experience.
+        // This entire block is removed from the production build.
+        if (import.meta.env.DEV) {
+            console.warn("MODO DESARROLLO: Autenticación omitida. Acceso de administrador concedido.");
+            setCurrentUser({ email: 'dev@eva3.app', isDev: true });
+            setLoading(false);
+            return; // Skips the real authentication listener
+        }
+
+        // Production authentication logic
         const unsubscribe = onAuthStateChanged(auth, user => {
             setCurrentUser(user);
             setLoading(false);
