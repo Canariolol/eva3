@@ -6,6 +6,17 @@ import ScoreSelector from '../components/ScoreSelector';
 import Tooltip from '../components/Tooltip';
 import '../components/ScoreSelector.css';
 
+const LabelWithTooltip = ({ text, tooltipText }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <span>{text}</span>
+        {tooltipText && (
+            <Tooltip text={tooltipText}>
+                <span className="info-icon">i</span>
+            </Tooltip>
+        )}
+    </div>
+);
+
 const Evaluate = () => {
     const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, refreshData } = useGlobalContext();
     
@@ -21,15 +32,17 @@ const Evaluate = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (evaluationSections.length > 0) {
+        if (evaluationSections.length > 0 && !evaluationType) {
             setEvaluationType(evaluationSections[0].name);
         }
-        if (executives.length > 0) {
+        if (executives.length > 0 && !selectedExecutive) {
             setSelectedExecutive(executives[0].Nombre);
         }
-    }, [executives, evaluationSections]);
+    }, [executives, evaluationSections, evaluationType, selectedExecutive]);
 
     useEffect(() => {
+        if (!evaluationType) return;
+
         const filteredEvaluable = criteria.filter(c => c.section === evaluationType);
         const filteredNonEvaluable = nonEvaluableCriteria.filter(c => c.section === evaluationType);
         
@@ -122,20 +135,27 @@ const Evaluate = () => {
   
     if (executives.length === 0 || evaluationSections.length === 0) return (<div><h1>Faltan Datos</h1><p>Añade ejecutivos, secciones y criterios en <b>Configuración</b>.</p></div>);
 
+    const selectedSection = evaluationSections.find(s => s.name === evaluationType);
+    
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
             <h4 className="card-title card-title-primary">Registrar Evaluación</h4>
             <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-                    <div className="form-group"><label>Tipo de Evaluación</label><select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
+                    <div className="form-group">
+                        <label>
+                            <LabelWithTooltip text="Tipo de Evaluación" tooltipText={selectedSection?.description} />
+                        </label>
+                        <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
+                    </div>
                     {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
-                            <Tooltip text={c.description || 'Sin descripción'}>
-                                <label>{c.name}</label>
-                            </Tooltip>
+                            <label>
+                                <LabelWithTooltip text={c.name} tooltipText={c.description} />
+                            </label>
                             {c.inputType === 'select' ? (
                                 <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
                                 {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -155,9 +175,9 @@ const Evaluate = () => {
                             {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
-                                    <Tooltip text={c.description || 'Sin descripción'}>
-                                        <label>{index + 1}. {c.name}</label>
-                                    </Tooltip>
+                                    <label>
+                                        <LabelWithTooltip text={`${index + 1}. ${c.name}`} tooltipText={c.description} />
+                                    </label>
                                     <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
                                 </div>
                             ))}

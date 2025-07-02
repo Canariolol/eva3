@@ -169,6 +169,11 @@ const Configuration = () => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
              if (collectionName === 'evaluationSections') {
                 const sectionToDelete = evaluationSections.find(s => s.id === id);
+                if (sectionToDelete.isDefault) {
+                     setError('No se pueden eliminar las secciones por defecto.');
+                     setTimeout(() => setError(''), 5000);
+                     return;
+                }
                 const criteriaUsingSection = criteria.filter(c => c.section === sectionToDelete?.name);
                 const nonEvaluableCriteriaUsingSection = nonEvaluableCriteria.filter(c => c.section === sectionToDelete?.name);
                  if (criteriaUsingSection.length > 0 || nonEvaluableCriteriaUsingSection.length > 0) {
@@ -180,6 +185,46 @@ const Configuration = () => {
             await deleteDoc(doc(db, collectionName, id));
             await refreshData();
         }
+    };
+
+    const handleMoveSection = async (sectionId, direction) => {
+        const sections = [...evaluationSections];
+        const index = sections.findIndex(s => s.id === sectionId);
+        if (index === -1) return;
+    
+        const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
+        if (swapIndex < 0 || swapIndex >= sections.length) return;
+    
+        const section1 = sections[index];
+        const section2 = sections[swapIndex];
+    
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'evaluationSections', section1.id), { order: section2.order });
+        batch.update(doc(db, 'evaluationSections', section2.id), { order: section1.order });
+    
+        await batch.commit();
+        await refreshData();
+    };
+
+    const handleMoveSubsection = async (subsectionId, direction) => {
+        const subs = [...aptitudeSubsections];
+        const index = subs.findIndex(s => s.id === subsectionId);
+        if (index === -1) return;
+    
+        const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
+        if (swapIndex < 0 || swapIndex >= subs.length) return;
+    
+        const sub1 = subs[index];
+        const sub2 = subs[swapIndex];
+    
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'aptitudeSubsections', sub1.id), { order: sub2.order });
+        batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub1.order });
+    
+        await batch.commit();
+        await refreshData();
     };
 
     const defaultFieldsNames = ['Nombre', 'Cargo', 'Área'];
@@ -288,19 +333,22 @@ const Configuration = () => {
                             </>
                         )}
                         <ul className="config-list">
-                            {evaluationSections.map(section => (
+                            {evaluationSections.map((section, index) => (
                                 <li key={section.id} className="config-list-item">
                                     <Tooltip text={section.description || 'Sin descripción'}>
                                         <span>{section.name}</span>
                                     </Tooltip>
                                     {currentUser && (
                                         <div className="config-actions">
-                                            <button className="btn-icon" onClick={() => handleEditClick(section, 'evaluationSections', [
-                                                { name: 'name', label: 'Nombre de la Sección' },
-                                                { name: 'description', label: 'Descripción', type: 'textarea' }
-                                            ])}>✏️</button>
-                                            <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('evaluationSections', section.id)}>🗑️</button>
-                                        </div>
+                                        <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
+                                        <button className="btn-icon" onClick={() => handleMoveSection(section.id, 'down')} disabled={index === evaluationSections.length - 1} title="Mover hacia abajo">↓</button>
+                                        <button className="btn-icon" onClick={() => handleEditClick(section, 'evaluationSections', [
+                                            { name: 'name', label: 'Nombre de la Sección' },
+                                            { name: 'description', label: 'Descripción', type: 'textarea' },
+                                            { name: 'color', label: 'Color', type: 'color' }
+                                        ])}>✏️</button>
+                                        {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('evaluationSections', section.id)}>🗑️</button>}
+                                    </div>
                                     )}
                                 </li>
                             ))}
