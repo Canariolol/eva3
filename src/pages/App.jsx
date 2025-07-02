@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
@@ -11,6 +11,7 @@ import Configuration from './pages/Configuration';
 import './App.css';
 import Footer from './components/Footer';
 import Header from './components/Header';
+import './components/Header.css';
 
 const AppLayout = () => {
   const { loading, error } = useGlobalContext();
@@ -88,16 +89,26 @@ const AppLayout = () => {
   )
 };
 
+const PageRoutes = () => {
+    return (
+        <Routes>
+            <Route index element={<Dashboard />} />
+            <Route path="team" element={<Team />} />
+            <Route path="evaluate" element={<Evaluate />} />
+            <Route path="configuration" element={<Configuration />} />
+        </Routes>
+    )
+}
+
 function App() {
   return (
-      <Routes>
-          <Route path="/" element={<AppLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="team" element={<Team />} />
-              <Route path="evaluate" element={<Evaluate />} />
-              <Route path="configuration" element={<Configuration />} />
-          </Route>
-      </Routes>
+      <Router>
+        <Routes>
+            <Route path="*" element={<AppLayout />}>
+                 <Route path="*" element={<PageRoutes />} />
+            </Route>
+        </Routes>
+      </Router>
   );
 }
 

@@ -1,32 +1,63 @@
 .app-header {
-    text-align: left;
-    padding: 1rem 2.5rem;
-    background: linear-gradient(to right, var(--color-primary), var(--color-primary-dark));
-    border-bottom: 3px solid var(--color-primary-dark);
+    background: linear-gradient(45deg, var(--color-primary), var(--color-primary-dark));
     color: white;
-    margin-bottom: 1.5rem;
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 86, 179, 0.2);
+}
+
+.header-info {
+    flex-grow: 1;
 }
 
 .company-name {
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: 600;
     color: rgba(255, 255, 255, 0.8);
     margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
 }
 
 .area-name {
     font-size: 2rem;
     color: white;
-    margin: 0.1rem 0;
-    font-weight: 700;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+    margin: 0.25rem 0;
 }
 
 .manager-name {
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0;
     font-style: italic;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.auth-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-email {
+    font-weight: 600;
+    color: white;
+}
+
+/* Override for buttons in the header to make them stand out */
+.app-header .btn-primary {
+    background-color: var(--color-light);
+    color: var(--color-primary);
+}
+.app-header .btn-primary:hover {
+     background-color: #e2e6ea;
+}
+
+
+.app-header .btn-secondary {
+    background-color: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    color: white;
+}
+.app-header .btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }

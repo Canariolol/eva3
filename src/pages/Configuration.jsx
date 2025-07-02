@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, doc, deleteDoc, writeBatch, setDoc, updateDoc } from 'firebase/firestore';
 
@@ -81,6 +82,7 @@ const Configuration = () => {
         refreshData,
         setHeaderInfo,
     } = useGlobalContext();
+    const { currentUser } = useAuth();
 
     const [showAllEvaluable, setShowAllEvaluable] = useState(false);
     const [showAllNonEvaluable, setShowAllNonEvaluable] = useState(false);
@@ -93,7 +95,7 @@ const Configuration = () => {
         name: '',
         section: 'Aptitudes Transversales',
         trackInDashboard: false,
-        trackEmptyInDashboard: false, // Re-added this state
+        trackEmptyInDashboard: false,
         inputType: 'text',
         options: ''
     });
@@ -308,10 +310,12 @@ const Configuration = () => {
                 currentSectionItems.push(
                      <li key={item.id} className="config-list-item">
                         <span>{item.name}{item.isNonEvaluable && ` ${getNonEvaluableSubtitle(item)}`}</span>
-                        <div className="config-actions">
-                            <button className="btn-icon" onClick={() => onEdit(item, item.collection, item.editFields)}>✏️</button>
-                            <button onClick={() => handleDelete(item.collection, item.id)} className="btn-icon btn-icon-danger">🗑️</button>
-                        </div>
+                        {currentUser && (
+                            <div className="config-actions">
+                                <button className="btn-icon" onClick={() => onEdit(item, item.collection, item.editFields)}>✏️</button>
+                                <button onClick={() => handleDelete(item.collection, item.id)} className="btn-icon btn-icon-danger">🗑️</button>
+                            </div>
+                        )}
                     </li>
                 );
             }
@@ -376,7 +380,7 @@ const Configuration = () => {
         <div>
             <h1>Configuración</h1>
 
-            {isEditModalOpen && (
+            {isEditModalOpen && currentUser && (
                 <EditModal 
                     item={itemToEdit}
                     onSave={handleSaveEdit}
@@ -387,6 +391,7 @@ const Configuration = () => {
 
             {error && <p className="error-message">{error}</p>}
             <div className="config-grid">
+                {currentUser && (
                 <div className="card">
                     <h4 className="card-title card-title-primary">Gestionar Ejecutivos</h4>
                     <div style={{ marginBottom: '1rem' }}>
@@ -417,8 +422,10 @@ const Configuration = () => {
                         ))}
                     </ul>
                 </div>
+                )}
                 <div className="card">
                     <h4 className="card-title card-title-primary">Gestionar Criterios Evaluables</h4>
+                    {currentUser && (
                      <form onSubmit={handleSaveCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
@@ -449,6 +456,7 @@ const Configuration = () => {
                         )}
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio</button>
                     </form>
+                    )}
                     <hr style={{margin: '2rem 0'}}/>
                     <h4 style={{marginTop: '0'}}>Listado de Criterios</h4>
                     {evaluableList}
@@ -467,6 +475,7 @@ const Configuration = () => {
                         {aptitudeSubsections.map((sub, index) => (
                             <li key={sub.id} className="config-list-item">
                                 <span>{sub.name}</span>
+                                {currentUser && (
                                 <div className="config-actions">
                                     <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [{ name: 'name', label: 'Nombre de la Subsección' }])}>✏️</button>
                                     <button 
@@ -496,12 +505,14 @@ const Configuration = () => {
                                         🗑️
                                     </button>
                                 </div>
+                                )}
                             </li>
                         ))}
                     </ul>
                 </div>
                 <div className="card">
                     <h4 className="card-title card-title-primary">Gestionar Criterios no Evaluables</h4>
+                    {currentUser && (
                     <form onSubmit={handleSaveNonEvaluableCriterion}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
@@ -539,6 +550,7 @@ const Configuration = () => {
                         </div>
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio no Evaluable</button>
                     </form>
+                    )}
                     <hr style={{margin: '2rem 0'}}/>
                      <h4 style={{marginTop: '0'}}>Listado de Criterios</h4>
                     {nonEvaluableList}
@@ -548,6 +560,7 @@ const Configuration = () => {
                         </button>
                     )}
                 </div>
+                 {currentUser && (
                 <div className="card">
                     <h4 className="card-title card-title-primary">Gestionar Campos de Creación de Ejecutivos</h4>
                     <form onSubmit={handleSaveField}>
@@ -571,6 +584,8 @@ const Configuration = () => {
                         ))}
                     </ul>
                 </div>
+                 )}
+                {currentUser && (
                 <div className="card">
                     <h4 className="card-title card-title-primary">Información de la Organización</h4>
                     <form onSubmit={handleSaveHeaderInfo}>
@@ -589,6 +604,7 @@ const Configuration = () => {
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Información</button>
                     </form>
                 </div>
+                )}
             </div>
         </div>
     );

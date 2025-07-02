@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { instances } from './firebase-instances';
 
 // Función para obtener el subdominio de la URL actual
@@ -28,6 +29,7 @@ const firebaseConfig = instances[subdomain] || instances['default'];
 // Inicializa Firebase con la configuración seleccionada
 const app = initializeApp(firebaseConfig);
 
-// Obtiene una instancia de Firestore
-// Este objeto 'db' es el que se usará para interactuar con la base de datos.
+// Obtiene una instancia de Firestore y Auth para la app inicializada
+// Este es el cambio clave: ambos servicios se crean desde la misma 'app'
 export const db = getFirestore(app);
+export const auth = getAuth(app);
