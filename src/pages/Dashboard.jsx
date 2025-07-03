@@ -19,7 +19,6 @@ const Dashboard = () => {
         );
     }
     
-    // Pre-calculamos los ejecutivos únicos y su mapa de colores una sola vez
     const executives = [...new Set(evaluations.map(e => e.executive))];
     const executiveColorMap = executives.reduce((acc, exec, idx) => {
         acc[exec] = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'][idx % 6];
@@ -30,17 +29,19 @@ const Dashboard = () => {
         <>
             <h1>Dashboard de Evaluaciones</h1>
             
-            {evaluationSections.map((section) => (
-                <DashboardSection
-                    key={section.id}
-                    section={section}
-                    evaluations={evaluations}
-                    criteriaConfig={criteria}
-                    nonEvaluableCriteria={nonEvaluableCriteria}
-                    executives={executives}
-                    executiveColorMap={executiveColorMap}
-                />
-            ))}
+            {evaluationSections
+                .filter(section => section.showInDashboard) // <-- AÑADIDO: Filtra las secciones
+                .map((section) => (
+                    <DashboardSection
+                        key={section.id}
+                        section={section}
+                        evaluations={evaluations}
+                        criteriaConfig={criteria}
+                        nonEvaluableCriteria={nonEvaluableCriteria}
+                        executives={executives}
+                        executiveColorMap={executiveColorMap}
+                    />
+                ))}
         </>
     );
 };

@@ -11,14 +11,20 @@ const ManageSections = ({
     onDelete 
 }) => {
     const [isAdding, setIsAdding] = useState(false);
-    const [newSection, setNewSection] = useState({ name: '', description: '', color: '#A7C7E7', includeManagementDate: false });
+    const [newSection, setNewSection] = useState({ 
+        name: '', 
+        description: '', 
+        color: '#A7C7E7', 
+        includeManagementDate: false,
+        showInDashboard: true // <-- Nuevo campo, por defecto en true
+    });
 
     const handleSave = (e) => {
         e.preventDefault();
         onSave(newSection);
         setIsAdding(false);
         const nextColor = ['#A7C7E7', '#C1E1C1', '#FDFD96', '#FFB347', '#FF6961', '#D1C4E9', '#B2DFDB'][evaluationSections.length % 7];
-        setNewSection({ name: '', description: '', color: nextColor, includeManagementDate: false });
+        setNewSection({ name: '', description: '', color: nextColor, includeManagementDate: false, showInDashboard: true });
     };
 
     return (
@@ -51,6 +57,12 @@ const ManageSections = ({
                                         <input type="checkbox" checked={newSection.includeManagementDate} onChange={(e) => setNewSection({ ...newSection, includeManagementDate: e.target.checked })} style={{ marginRight: '10px' }}/>
                                         Incluir "Fecha de Gestión"
                                     </label>
+                                    {/* --- INICIO DE LÍNEAS NUEVAS --- */}
+                                    <label style={{ display: 'flex', alignItems: 'center', marginTop: '1rem' }}>
+                                        <input type="checkbox" checked={newSection.showInDashboard} onChange={(e) => setNewSection({ ...newSection, showInDashboard: e.target.checked })} style={{ marginRight: '10px' }}/>
+                                        Incluir sección en Dashboard
+                                    </label>
+                                    {/* --- FIN DE LÍNEAS NUEVAS --- */}
                                 </div>
                                 <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Sección</button>
                             </form>
@@ -66,6 +78,9 @@ const ManageSections = ({
                                     <span>{section.name}</span>
                                 </Tooltip>
                                 {section.includeManagementDate && <span className="badge">Fecha Gestión</span>}
+                                {/* --- INICIO DE LÍNEA NUEVA --- */}
+                                {section.showInDashboard && <span className="badge" style={{backgroundColor: '#C1E1C1'}}>En Dashboard</span>}
+                                {/* --- FIN DE LÍNEA NUEVA --- */}
                             </div>
                             {currentUser && (
                                 <div className="config-actions">
@@ -75,7 +90,10 @@ const ManageSections = ({
                                         { name: 'name', label: 'Nombre de la Sección' },
                                         { name: 'description', label: 'Descripción', type: 'textarea' },
                                         { name: 'color', label: 'Color', type: 'color' },
-                                        { name: 'includeManagementDate', label: 'Funcionalidades Adicionales', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' }
+                                        { name: 'includeManagementDate', label: 'Funcionalidad Extra', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' },
+                                        // --- INICIO DE LÍNEA NUEVA ---
+                                        { name: 'showInDashboard', label: 'Visibilidad', type: 'checkbox', checkboxLabel: 'Incluir sección en Dashboard' }
+                                        // --- FIN DE LÍNEA NUEVA ---
                                     ])}>✏️</button>
                                     {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => onDelete('evaluationSections', section.id)}>🗑️</button>}
                                 </div>
