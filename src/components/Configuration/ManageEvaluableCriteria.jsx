@@ -9,9 +9,15 @@ const ManageEvaluableCriteria = ({
     currentUser,
     handleSaveCriterion,
     handleEditClick,
-    handleDelete
+    handleDelete,
+    getEvaluableEditFields // <-- Se recibe como prop
 }) => {
-    const [newCriterion, setNewCriterion] = useState({ name: '', description: '', section: evaluationSections[0]?.name || '', subsection: '' });
+    const [newCriterion, setNewCriterion] = useState({ 
+        name: '', 
+        description: '', 
+        section: evaluationSections.length > 0 ? evaluationSections[0].name : '', 
+        subsection: '' 
+    });
     
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -31,7 +37,7 @@ const ManageEvaluableCriteria = ({
             <h4 className="card-title card-title-primary">Gestionar Criterios Evaluables</h4>
             <CollapsibleCard>
                 {currentUser && (
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} style={{marginBottom: '2rem'}}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
                             <input type="text" className="form-control" value={newCriterion.name} onChange={(e) => setNewCriterion({ ...newCriterion, name: e.target.value })}/>
@@ -59,7 +65,6 @@ const ManageEvaluableCriteria = ({
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio</button>
                     </form>
                 )}
-                <hr style={{margin: '2rem 0'}}/>
                 <h5 style={{marginTop: '0'}}>Listado de Criterios</h5>
                 {Object.keys(groupedCriteria).map(sectionName => (
                     <div key={sectionName}>
@@ -86,13 +91,4 @@ const ManageEvaluableCriteria = ({
     );
 };
 
-// Helper function to be passed from the parent, defined here for clarity
-const getEvaluableEditFields = (item, evaluationSections, aptitudeSubsections) => [
-    { name: 'name', label: 'Nombre del Criterio' },
-    { name: 'description', label: 'Descripción', type: 'textarea' },
-    { name: 'section', label: 'Sección', type: 'select', options: evaluationSections.map(s => ({ value: s.name, label: s.name })) },
-    { name: 'subsection', label: 'Subsección', type: 'select', options: [{value: '', label: 'Sin Subsección'}, ...aptitudeSubsections.filter(s => s.section === item.section).map(s => ({value: s.name, label: s.name}))] }
-];
-
-
-export { ManageEvaluableCriteria, getEvaluableEditFields };
+export default ManageEvaluableCriteria;

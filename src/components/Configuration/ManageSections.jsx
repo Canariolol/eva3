@@ -75,7 +75,7 @@ const ManageSections = ({
                                         { name: 'name', label: 'Nombre de la Sección' },
                                         { name: 'description', label: 'Descripción', type: 'textarea' },
                                         { name: 'color', label: 'Color', type: 'color' },
-                                        { name: 'includeManagementDate', label: 'Funcionalidad Extra', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' }
+                                        { name: 'includeManagementDate', label: 'Funcionalidades Adicionales', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' }
                                     ])}>✏️</button>
                                     {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => onDelete('evaluationSections', section.id)}>🗑️</button>}
                                 </div>

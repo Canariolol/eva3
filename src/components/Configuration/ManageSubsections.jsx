@@ -12,12 +12,11 @@ const ManageSubsections = ({
     handleDelete
 }) => {
     const [isAdding, setIsAdding] = useState(false);
-    const [newSubsection, setNewSubsection] = useState({ name: '', section: evaluationSections.length > 0 ? evaluationSections[0].name : '' });
+    const [newSubsection, setNewSubsection] = useState({ name: '', section: evaluationSections[0]?.name || '' });
 
     const handleSave = (e) => {
         e.preventDefault();
-        // We pass the state directly to the handler function from the parent
-        handleSaveSubsection(newSubsection, e);
+        handleSaveSubsection(newSubsection);
         setIsAdding(false);
         setNewSubsection({ name: '', section: newSubsection.section });
     };

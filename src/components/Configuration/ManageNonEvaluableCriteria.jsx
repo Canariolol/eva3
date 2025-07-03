@@ -10,12 +10,12 @@ const ManageNonEvaluableCriteria = ({
     handleEditClick,
     handleDelete,
     getNonEvaluableSubtitle,
-    getNonEvaluableEditFields
+    getNonEvaluableEditFields // <-- Se recibe como prop
 }) => {
     const [newCriterion, setNewCriterion] = useState({
         name: '',
         description: '',
-        section: evaluationSections[0]?.name || '',
+        section: evaluationSections.length > 0 ? evaluationSections[0].name : '',
         trackInDashboard: false,
         trackEmptyInDashboard: false,
         inputType: 'text',
@@ -48,7 +48,7 @@ const ManageNonEvaluableCriteria = ({
             <h4 className="card-title card-title-primary">Gestionar Criterios no Evaluables</h4>
             <CollapsibleCard>
                 {currentUser && (
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} style={{marginBottom: '2rem'}}>
                         <div className="form-group">
                             <label>Nombre del Criterio</label>
                             <input type="text" className="form-control" value={newCriterion.name} onChange={(e) => setNewCriterion({ ...newCriterion, name: e.target.value })}/>
@@ -90,7 +90,6 @@ const ManageNonEvaluableCriteria = ({
                         <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Criterio no Evaluable</button>
                     </form>
                 )}
-                <hr style={{margin: '2rem 0'}}/>
                 <h5 style={{marginTop: '0'}}>Listado de Criterios</h5>
                 {Object.keys(groupedCriteria).map(sectionName => (
                     <div key={sectionName}>

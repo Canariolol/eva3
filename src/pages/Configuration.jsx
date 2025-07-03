@@ -9,7 +9,7 @@ import EditModal from '../components/EditModal';
 import ManageExecutives from '../components/Configuration/ManageExecutives';
 import ManageSections from '../components/Configuration/ManageSections';
 import ManageSubsections from '../components/Configuration/ManageSubsections';
-import { ManageEvaluableCriteria, getEvaluableEditFields } from '../components/Configuration/ManageEvaluableCriteria';
+import ManageEvaluableCriteria from '../components/Configuration/ManageEvaluableCriteria';
 import ManageNonEvaluableCriteria from '../components/Configuration/ManageNonEvaluableCriteria';
 import ManageExecutiveFields from '../components/Configuration/ManageExecutiveFields';
 import CollapsibleCard from '../components/CollapsibleCard';
@@ -151,22 +151,29 @@ const Configuration = () => {
         await refreshData();
     };
 
-    const handleMoveSubsection = (sectionName) => async (subsectionId, direction) => {
+    const handleMoveSubsection = async (subsectionId, sectionName, direction) => {
         const subsOfSection = aptitudeSubsections
             .filter(s => s.section === sectionName)
             .sort((a, b) => a.order - b.order);
+
         const index = subsOfSection.findIndex(s => s.id === subsectionId);
         if (index === -1) return;
+    
         const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
         if (swapIndex < 0 || swapIndex >= subsOfSection.length) return;
+    
         const sub1 = subsOfSection[index];
         const sub2 = subsOfSection[swapIndex];
+    
         const batch = writeBatch(db);
         batch.update(doc(db, 'aptitudeSubsections', sub1.id), { order: sub2.order });
         batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub1.order });
+    
         await batch.commit();
         await refreshData();
     };
+
 
     const getNonEvaluableSubtitle = (item) => {
         const parts = [];
@@ -175,8 +182,23 @@ const Configuration = () => {
         if (item.trackEmptyInDashboard) parts.push('Conteo Vacíos');
         return `(${parts.join(', ')})`;
     };
-
-    // --- El JSX ahora solo se encarga de llamar a los componentes ---
+    
+    const getEvaluableEditFields = (item) => [
+        { name: 'name', label: 'Nombre del Criterio' },
+        { name: 'description', label: 'Descripción', type: 'textarea' },
+        { name: 'section', label: 'Sección', type: 'select', options: evaluationSections.map(s => ({ value: s.name, label: s.name })) },
+        { name: 'subsection', label: 'Subsección', type: 'select', options: [{value: '', label: 'Sin Subsección'}, ...aptitudeSubsections.filter(s => s.section === item.section).map(s => ({value: s.name, label: s.name}))] }
+    ];
+    
+    const getNonEvaluableEditFields = (item) => [
+        { name: 'name', label: 'Nombre del Criterio' },
+        { name: 'description', label: 'Descripción', type: 'textarea' },
+        { name: 'section', label: 'Sección', type: 'select', options: evaluationSections.map(s => ({ value: s.name, label: s.name })) },
+        { name: 'inputType', label: 'Tipo de Campo', type: 'select', options: [{value: 'text', label: 'Texto'}, {value: 'select', label: 'Desplegable'}] },
+        ...(item.inputType === 'select' ? [{ name: 'options', label: 'Opciones (separadas por comas)'}] : []),
+        { name: 'trackInDashboard', label: 'Seguimiento Detallado', type: 'checkbox', checkboxLabel: 'Mostrar desglose de valores en Dashboard' },
+        { name: 'trackEmptyInDashboard', label: 'Conteo de Vacíos', type: 'checkbox', checkboxLabel: 'Contar valores N/A o vacíos en Dashboard' }
+    ];
     
     return (
         <div>
@@ -228,6 +250,7 @@ const Configuration = () => {
                     handleSaveCriterion={handleSaveCriterion}
                     handleEditClick={handleEditClick}
                     handleDelete={handleDelete}
+                    getEvaluableEditFields={getEvaluableEditFields}
                 />
 
                 <ManageNonEvaluableCriteria
@@ -238,7 +261,7 @@ const Configuration = () => {
                     handleEditClick={handleEditClick}
                     handleDelete={handleDelete}
                     getNonEvaluableSubtitle={getNonEvaluableSubtitle}
-                    getNonEvaluableEditFields={(item) => getNonEvaluableEditFields(item, evaluationSections)}
+                    getNonEvaluableEditFields={(item) => getNonEvaluableEditFields(item)}
                 />
 
                 <ManageExecutiveFields
