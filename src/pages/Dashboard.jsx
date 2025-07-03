@@ -1,378 +1,46 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import TooltipComponent from '../components/Tooltip';
-
-const truncateName = (name) => {
-    const words = name.split(' ');
-    if (words.length > 1) {
-        return `${words[0]}...`;
-    }
-    return name;
-};
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="custom-tooltip" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-        <p className="label" style={{ margin: 0, fontWeight: 'bold', color: '#333' }}>{payload[0].payload.name}</p>
-        <p className="intro" style={{ margin: '5px 0 0' }}>
-          <span style={{ color: payload[0].fill }}>{`${payload[0].name}: `}</span>
-          <span style={{ fontWeight: 'bold' }}>{payload[0].value.toFixed(2)}</span>
-        </p>
-      </div>
-    );
-  }
-
-  return null;
-};
-
-const processDataForLineChart = (evaluations, dateField = 'date') => {
-  const dataByDate = evaluations.reduce((acc, curr) => {
-    const dateValue = curr[dateField];
-    if (!dateValue || typeof dateValue.toLocaleDateString !== 'function') {
-      return acc; 
-    }
-    const date = dateValue.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-    if (!acc[date]) {
-      acc[date] = { date };
-    }
-    if (!acc[date][curr.executive]) {
-      acc[date][curr.executive] = [];
-    }
-    const scores = Object.values(curr.scores);
-    if (scores.length > 0) {
-      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-      acc[date][curr.executive].push(avgScore);
-    }
-    return acc;
-  }, {});
-
-  return Object.values(dataByDate).map(dateEntry => {
-    const newDateEntry = { date: dateEntry.date };
-    Object.keys(dateEntry).forEach(key => {
-      if (key !== 'date') {
-        const executiveScores = dateEntry[key];
-        newDateEntry[key] = parseFloat((executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length).toFixed(2));
-      }
-    });
-    return newDateEntry;
-  });
-};
-
-const processDataForBarChart = (evaluations, section, criteriaConfig, chartState = null) => {
-  const sectionEvaluations = evaluations.filter(e => e.section === section);
-
-  if (section === 'Aptitudes Transversales' && chartState) {
-    const { view, selectedSubsection } = chartState;
-    const criterionToSubsectionMap = criteriaConfig
-        .filter(c => c.section === 'Aptitudes Transversales')
-        .reduce((acc, c) => {
-            acc[c.name] = c.subsection || 'Sin Subsección';
-            return acc;
-        }, {});
-
-    switch (view) {
-        case 'byCriterion': {
-            const dataByCriterion = {};
-            sectionEvaluations.forEach(ev => {
-                Object.entries(ev.scores).forEach(([criterionName, score]) => {
-                    if (criterionToSubsectionMap[criterionName] === selectedSubsection) {
-                        if (!dataByCriterion[criterionName]) dataByCriterion[criterionName] = [];
-                        dataByCriterion[criterionName].push(score);
-                    }
-                });
-            });
-            return Object.entries(dataByCriterion).map(([name, scores]) => ({
-                name,
-                shortName: truncateName(name),
-                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
-            }));
-        }
-        case 'allCriteria': {
-            const dataByCriterion = {};
-             sectionEvaluations.forEach(ev => {
-                Object.entries(ev.scores).forEach(([criterionName, score]) => {
-                    if (!dataByCriterion[criterionName]) dataByCriterion[criterionName] = [];
-                    dataByCriterion[criterionName].push(score);
-                });
-            });
-             return Object.entries(dataByCriterion).map(([name, scores]) => ({
-                name,
-                shortName: truncateName(name),
-                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
-            }));
-        }
-        case 'bySubsection':
-        default: {
-            const dataBySubsection = {};
-            sectionEvaluations.forEach(ev => {
-                Object.entries(ev.scores).forEach(([criterionName, score]) => {
-                    const subsection = criterionToSubsectionMap[criterionName];
-                    if (subsection) {
-                        if (!dataBySubsection[subsection]) dataBySubsection[subsection] = [];
-                        dataBySubsection[subsection].push(score);
-                    }
-                });
-            });
-            return Object.entries(dataBySubsection).map(([name, scores]) => ({
-                name,
-                shortName: truncateName(name),
-                'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
-            }));
-        }
-    }
-  }
-
-  const dataByCriterion = sectionEvaluations.reduce((acc, curr) => {
-    Object.entries(curr.scores).forEach(([criterion, score]) => {
-      if (!acc[criterion]) acc[criterion] = [];
-      acc[criterion].push(score);
-    });
-    return acc;
-  }, {});
-
-  return Object.entries(dataByCriterion).map(([name, scores]) => ({
-    name: name,
-    shortName: truncateName(name),
-    'Puntaje Promedio': scores.reduce((a, b) => a + b, 0) / scores.length,
-  }));
-};
-
-const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria, section) => {
-  const trackedCriteria = nonEvaluableCriteria.filter(c => c.section === section && (c.trackInDashboard || c.trackEmptyInDashboard));
-  
-  let metrics = [];
-
-  trackedCriteria.forEach(criterion => {
-    if (criterion.trackInDashboard) {
-        if (criterion.inputType === 'select') {
-          const counts = criterion.options.reduce((acc, option) => ({ ...acc, [option]: 0 }), {});
-          sectionEvaluations.forEach(ev => {
-            const value = ev.nonEvaluableData?.[criterion.name];
-            if (value && counts.hasOwnProperty(value)) {
-              counts[value]++;
-            }
-          });
-          metrics.push({ name: criterion.name, type: 'select', counts });
-        } else {
-          const count = sectionEvaluations.reduce((acc, ev) => (ev.nonEvaluableData?.[criterion.name] ? acc + 1 : acc), 0);
-          metrics.push({ name: `${criterion.name} (Registrados)`, type: 'text', count });
-        }
-    }
-    
-    if (criterion.trackEmptyInDashboard) {
-      let responded = 0;
-      let pending = 0;
-      sectionEvaluations.forEach(ev => {
-        const value = ev.nonEvaluableData?.[criterion.name];
-        if (!value || value.trim() === '' || value.toLowerCase() === 'n/a') {
-          pending++;
-        } else {
-          responded++;
-        }
-      });
-      
-      metrics.push({
-          name: `${criterion.name}/s`,
-          type: 'select',
-          counts: {
-              'Ingresados': responded,
-              'Sin Ingreso (N/A)': pending,
-          }
-      });
-    }
-  });
-
-  return metrics;
-};
-
-const processExecutiveAverages = (sectionEvaluations) => {
-    const executiveData = {};
-
-    sectionEvaluations.forEach(ev => {
-        if (!executiveData[ev.executive]) {
-            executiveData[ev.executive] = { scores: [], count: 0 };
-        }
-        const scores = Object.values(ev.scores);
-        if(scores.length > 0) {
-            const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-            executiveData[ev.executive].scores.push(avgScore);
-        }
-    });
-
-    return Object.entries(executiveData).map(([name, data]) => ({
-        name,
-        average: data.scores.length > 0 ? data.scores.reduce((a, b) => a + b, 0) / data.scores.length : 0
-    })).sort((a, b) => b.average - a.average);
-};
+import DashboardSection from '../components/Dashboard/DashboardSection';
 
 const Dashboard = () => {
-    const { evaluations, criteria: criteriaConfig, nonEvaluableCriteria, evaluationSections } = useGlobalContext();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalData, setModalData] = useState([]);
-    const [modalTitle, setModalTitle] = useState('');
-    const [transversalChartState, setTransversalChartState] = useState({ view: 'bySubsection', selectedSubsection: null });
+    const { 
+        evaluations, 
+        criteria, 
+        nonEvaluableCriteria, 
+        evaluationSections 
+    } = useGlobalContext();
 
-    const handleTransversalChartClick = (data) => {
-        if (!data || !data.activePayload || !data.activePayload.length) return;
-        const clickedItemName = data.activePayload[0].payload.name;
-        setTransversalChartState(currentState => {
-            switch (currentState.view) {
-                case 'bySubsection': return { view: 'byCriterion', selectedSubsection: clickedItemName };
-                case 'byCriterion': return { view: 'allCriteria', selectedSubsection: null };
-                case 'allCriteria': return { view: 'bySubsection', selectedSubsection: null };
-                default: return { view: 'bySubsection', selectedSubsection: null };
-            }
-        });
-    };
-
-    const getTransversalChartTitle = () => {
-        const { view, selectedSubsection } = transversalChartState;
-        switch(view) {
-            case 'byCriterion': return `Detalle: ${selectedSubsection}`;
-            case 'allCriteria': return 'Promedio por Criterio (Todos)';
-            case 'bySubsection': default: return 'Promedio por Subsección';
-        }
-    };
-
-    const openModal = (data, title) => {
-        setModalData(data);
-        setModalTitle(title);
-        setIsModalOpen(true);
-    };
-
-    if (evaluations.length === 0) return (<div><h1>Dashboard</h1><p>Aún no hay datos para mostrar. Ve a <b>Evaluar</b> para registrar la primera evaluación.</p></div>);
-  
+    if (evaluations.length === 0) {
+        return (
+            <div>
+                <h1>Dashboard</h1>
+                <p>Aún no hay datos para mostrar. Ve a <b>Evaluar</b> para registrar la primera evaluación.</p>
+            </div>
+        );
+    }
+    
+    // Pre-calculamos los ejecutivos únicos y su mapa de colores una sola vez
     const executives = [...new Set(evaluations.map(e => e.executive))];
-    const executiveColorMap = executives.reduce((acc, exec, index) => {
-        acc[exec] = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'][index % 6];
+    const executiveColorMap = executives.reduce((acc, exec, idx) => {
+        acc[exec] = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'][idx % 6];
         return acc;
     }, {});
 
-    const pluralize = (count, singular, plural) => (count === 1 ? singular : plural || `${singular}s`);
-
-    const renderExecutiveSummary = (averages, title, color) => (
-        <div className="card" style={{ flex: 1, minWidth: '300px' }}>
-            <h4 className="card-title" style={{backgroundColor: color + '20', color: color}}>{`Resumen por Ejecutivo: ${title}`}</h4>
-            <ul className="config-list">
-                {averages.slice(0, 5).map(avg => (
-                    <li key={avg.name} className="config-list-item">
-                        <span>{avg.name}</span>
-                        <span style={{fontWeight: 'bold'}}>{avg.average.toFixed(2)}</span>
-                    </li>
-                ))}
-            </ul>
-            {averages.length > 5 && (
-                <button className="btn-link" onClick={() => openModal(averages, `Resumen completo: ${title}`)}>
-                    Ver más...
-                </button>
-            )}
-        </div>
-    );
-
-    const renderAdditionalMetricsCard = (title, evaluations, nonEvaluable, overallAverage, color) => (
-        <div className="card" style={{flex: 1, minWidth: '400px'}}>
-        <h4 className="card-title" style={{ backgroundColor: color + '20', color: color }}>{title}</h4>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', height: 'calc(100% - 40px)' }}>
-            <div style={{ flex: 1, paddingRight: '1rem', overflowY: 'auto' }}>
-            <p><strong>{pluralize(evaluations.length, 'Evaluación Realizada', 'Evaluaciones Realizadas')}:</strong> {evaluations.length}</p>
-            {nonEvaluable.map(metric => (
-                <div key={metric.name}>
-                {metric.type === 'select' ? (
-                    <>
-                    <p style={{marginTop: '1rem'}}><strong>{metric.name}:</strong></p>
-                    <ul style={{listStylePosition: 'inside', paddingLeft: '1rem', margin: 0}}>
-                        {Object.entries(metric.counts).map(([option, count]) => (
-                        <li key={option}>{option}: {count}</li>
-                        ))}
-                    </ul>
-                    </>
-                ) : (
-                    <p><strong>{pluralize(metric.count, metric.name, metric.name)}:</strong> {metric.count}</p>
-                )}
-                </div>
-            ))}
-            </div>
-            
-            {overallAverage > 0 && (
-            <>
-                <div style={{ borderLeft: '1px solid #ccc', margin: '0 1rem' }}></div>
-                <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingLeft: '1rem' }}>
-                    <p style={{ margin: 0, fontSize: '1.1rem', color: '#6c757d', textAlign: 'center' }}>Promedio General</p>
-                    <p style={{ margin: 0, fontSize: '2.8rem', fontWeight: 'bold', lineHeight: 1.2, color: color }}>
-                        {overallAverage.toFixed(2)}
-                    </p>
-                </div>
-            </>
-            )}
-        </div>
-        </div>
-    );
-
     return (
         <>
-        <h1>Dashboard de Evaluaciones</h1>
-        
-        {evaluationSections.map((section) => {
-            const sectionEvaluations = evaluations.filter(e => e.section === section.name);
-            if(sectionEvaluations.length === 0) return null;
+            <h1>Dashboard de Evaluaciones</h1>
             
-            const dateField = section.name === 'Calidad de Desempeño' ? 'managementDate' : 'evaluationDate';
-            
-            const lineData = processDataForLineChart(sectionEvaluations.filter(e => e[dateField]).sort((a,b) => a[dateField] - b[dateField]), dateField);
-            const barData = processDataForBarChart(evaluations, section.name, criteriaConfig, section.name === 'Aptitudes Transversales' ? transversalChartState : null);
-            const nonEvaluable = processNonEvaluableData(sectionEvaluations, nonEvaluableCriteria, section.name);
-            const executiveAverages = processExecutiveAverages(sectionEvaluations);
-            const overallAverage = sectionEvaluations.flatMap(e => Object.values(e.scores)).reduce((a, b) => a + b, 0) / sectionEvaluations.flatMap(e => Object.values(e.scores)).length || 0;
-
-            return (
-                <section key={section.id} className="dashboard-section">
-                    <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                        <h2>{section.name}</h2>
-                        <TooltipComponent text={section.description || 'Sin descripción'} />
-                    </div>
-                    <div className="dashboard-grid">
-                        <div className="card">
-                            <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>Progreso Comparativo</h4>
-                            <ResponsiveContainer width="100%" height={300}><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name] || '#ccc'} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer>
-                        </div>
-                        <div className="card">
-                            <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>{section.name === 'Aptitudes Transversales' ? getTransversalChartTitle() : 'Promedio por Criterio'}</h4>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={barData} onClick={section.name === 'Aptitudes Transversales' ? handleTransversalChartClick : null} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={[0, 10]} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="Puntaje Promedio" fill={section.color} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', marginTop: '2rem', alignItems: 'stretch' }}>
-                        {(nonEvaluable.length > 0 || sectionEvaluations.length > 0) && 
-                            renderAdditionalMetricsCard('Métricas Adicionales', sectionEvaluations, nonEvaluable, overallAverage, section.color)
-                        }
-                        {executiveAverages.length > 0 && renderExecutiveSummary(executiveAverages, section.name, section.color)}
-                    </div>
-                </section>
-            );
-        })}
-
-        {isModalOpen && (
-            <div className="modal-backdrop">
-                <div className="modal-content">
-                    <button className="modal-close-btn" onClick={() => setIsModalOpen(false)}>×</button>
-                    <h3>{modalTitle}</h3>
-                    <ul className="config-list" style={{marginTop: '1.5rem'}}>
-                        {modalData.map(avg => (
-                            <li key={avg.name} className="config-list-item">
-                                <span>{avg.name}</span>
-                                <span style={{fontWeight: 'bold'}}>{avg.average.toFixed(2)}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-        )}
+            {evaluationSections.map((section) => (
+                <DashboardSection
+                    key={section.id}
+                    section={section}
+                    evaluations={evaluations}
+                    criteriaConfig={criteria}
+                    nonEvaluableCriteria={nonEvaluableCriteria}
+                    executives={executives}
+                    executiveColorMap={executiveColorMap}
+                />
+            ))}
         </>
     );
 };
