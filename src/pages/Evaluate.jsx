@@ -101,6 +101,7 @@ const Evaluate = () => {
             return;
         }
 
+        const currentSection = evaluationSections.find(s => s.name === evaluationType);
         let evaluationData = {
             executive: selectedExecutive,
             section: evaluationType,
@@ -108,7 +109,7 @@ const Evaluate = () => {
             nonEvaluableData: nonEvaluableData,
             observations: observations,
             evaluationDate: serverTimestamp(),
-            ...(evaluationType === 'Calidad de Desempeño' && { managementDate: new Date(managementDate) })
+            ...(currentSection?.includeManagementDate && { managementDate: new Date(managementDate) })
         };
         
         try {
@@ -149,7 +150,7 @@ const Evaluate = () => {
                         </label>
                         <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                     </div>
-                    {evaluationType === 'Calidad de Desempeño' && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+                    {selectedSection?.includeManagementDate && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
