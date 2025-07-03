@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext'; // Importar el contexto de autenticación
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomTooltip from '../components/Dashboard/CustomTooltip';
 import './Team.css';
@@ -25,6 +26,7 @@ const Modal = ({ children, onClose, size = 'default' }) => {
 
 const Team = () => {
     const { executives, evaluations, evaluationSections } = useGlobalContext();
+    const { userRole, executiveData } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [selectedExecutive, setSelectedExecutive] = useState(null);
@@ -34,20 +36,32 @@ const Team = () => {
         const executiveId = searchParams.get('executiveId');
         const evaluationId = searchParams.get('evaluationId');
 
+        // Si el usuario es un ejecutivo y no hay un ID en la URL, mostrar su propio detalle por defecto.
+        if (userRole === 'executive' && !executiveId && executiveData) {
+            setSearchParams({ executiveId: executiveData.id });
+            return;
+        }
+
         if (executiveId && executives.length > 0) {
-            const executiveToSelect = executives.find(e => e.id === executiveId);
-            setSelectedExecutive(executiveToSelect || null);
+            const execToSelect = executives.find(e => e.id === executiveId);
+            
+            // Un ejecutivo solo puede ver su propio detalle.
+            if (userRole === 'executive' && execToSelect?.id !== executiveData?.id) {
+                setSelectedExecutive(null);
+            } else {
+                setSelectedExecutive(execToSelect || null);
+            }
         } else {
             setSelectedExecutive(null);
         }
         
         if (evaluationId && evaluations.length > 0) {
-            const evaluationToSelect = evaluations.find(e => e.id === evaluationId);
-            setSelectedEvaluation(evaluationToSelect || null);
+            const evalToSelect = evaluations.find(e => e.id === evaluationId);
+            setSelectedEvaluation(evalToSelect || null);
         } else {
             setSelectedEvaluation(null);
         }
-    }, [searchParams, executives, evaluations]);
+    }, [searchParams, executives, evaluations, userRole, executiveData, setSearchParams]);
     
     const truncateName = (name) => {
         const words = name.split(' ');
@@ -55,23 +69,22 @@ const Team = () => {
     };
 
     const handleExecutiveCardClick = (executive) => {
-        // Navegación controlada por URL
-        setSearchParams({ executiveId: executive.id });
+        const isClickable = userRole === 'admin' || (userRole === 'executive' && executive.id === executiveData?.id);
+        if (isClickable) {
+            setSearchParams({ executiveId: executive.id });
+        }
     };
 
     const handleCloseExecutiveModal = () => {
-        // Limpiar parámetros de URL para cerrar modales
         setSearchParams({});
     };
 
     const handleSelectEvaluation = (evaluation) => {
-        // Añadir el ID de la evaluación a la URL para abrir el segundo modal
         const currentParams = Object.fromEntries(searchParams.entries());
         setSearchParams({ ...currentParams, evaluationId: evaluation.id });
     };
 
     const handleCloseEvaluationModal = () => {
-        // Quitar solo el ID de la evaluación, manteniendo el del ejecutivo
         const currentParams = Object.fromEntries(searchParams.entries());
         delete currentParams.evaluationId;
         setSearchParams(currentParams);
@@ -209,20 +222,30 @@ const Team = () => {
         );
     };
 
+    const pageTitle = userRole === 'executive' ? 'Mi Equipo' : 'Nuestro Equipo';
+    const pageSubtitle = userRole === 'admin' 
+        ? 'Haz clic en un ejecutivo para ver su historial de rendimiento.'
+        : 'Puedes ver tu historial de rendimiento haciendo clic en tu tarjeta.';
+
     return (
         <>
-            <h1>Nuestro Equipo</h1>
-            <p className="page-subtitle">
-                Haz clic en un ejecutivo para ver su historial de rendimiento.
-            </p>
+            <h1>{pageTitle}</h1>
+            <p className="page-subtitle">{pageSubtitle}</p>
             <div className="team-grid">
-                {executives.map(exec => (
-                    <div key={exec.id} className="card team-card" onClick={() => handleExecutiveCardClick(exec)}>
-                        <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
-                        <h2>{exec.Nombre}</h2>
-                        <p>{exec.Cargo || 'N/A'}</p>
-                    </div>
-                ))}
+                {executives.map(exec => {
+                    const isClickable = userRole === 'admin' || (userRole === 'executive' && exec.id === executiveData?.id);
+                    return (
+                        <div 
+                            key={exec.id} 
+                            className={`card team-card ${isClickable ? '' : 'disabled'}`}
+                            onClick={() => handleExecutiveCardClick(exec)}
+                        >
+                            <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
+                            <h2>{exec.Nombre}</h2>
+                            <p>{exec.Cargo || 'N/A'}</p>
+                        </div>
+                    );
+                })}
             </div>
 
             {selectedExecutive && (

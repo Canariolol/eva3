@@ -1,13 +1,18 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '../firebase'; // Importar la instancia de auth centralizada
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { useGlobalContext } from './GlobalContext';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+    const { executives } = useGlobalContext();
     const [currentUser, setCurrentUser] = useState(null);
+    const [userRole, setUserRole] = useState(null);
+    const [executiveData, setExecutiveData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const login = (email, password) => {
@@ -19,28 +24,63 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        // DEVELOPMENT-ONLY: Bypasses the login screen for a smoother dev experience.
-        // This entire block is removed from the production build.
-        if (import.meta.env.DEV) {
-            console.warn("MODO DESARROLLO: Autenticación omitida. Acceso de administrador concedido.");
-            setCurrentUser({ email: 'dev@eva3.app', isDev: true });
-            setLoading(false);
-            return; // Skips the real authentication listener
-        }
-
-        // Production authentication logic
         const unsubscribe = onAuthStateChanged(auth, user => {
             setCurrentUser(user);
-            setLoading(false);
         });
-
         return unsubscribe;
     }, []);
 
+    useEffect(() => {
+        const determineRole = async () => {
+            if (!currentUser) {
+                setLoading(false);
+                setUserRole(null);
+                setExecutiveData(null);
+                return;
+            }
+
+            setLoading(true);
+
+            // 1. Comprobar si es un Administrador
+            const adminRef = doc(db, 'admins', currentUser.email);
+            const adminSnap = await getDoc(adminRef);
+
+            if (adminSnap.exists()) {
+                setUserRole('admin');
+                setExecutiveData(null); // Los admins no son ejecutivos
+                setLoading(false);
+                return;
+            }
+
+            // 2. Si no es admin, comprobar si es un Ejecutivo
+            if (executives.length > 0) {
+                const matchingExecutive = executives.find(exec => 
+                    exec.Email && exec.Email.toLowerCase() === currentUser.email.toLowerCase()
+                );
+
+                if (matchingExecutive) {
+                    setUserRole('executive');
+                    setExecutiveData(matchingExecutive);
+                } else {
+                    // 3. Si no está en ninguna lista, no tiene rol
+                    setUserRole(null);
+                    setExecutiveData(null);
+                }
+            }
+            
+            setLoading(false);
+        };
+
+        determineRole();
+    }, [currentUser, executives]);
+
     const value = {
         currentUser,
+        userRole,
+        executiveData,
         login,
-        logout
+        logout,
+        loading
     };
 
     return (

@@ -11,7 +11,7 @@ import {
     processExecutiveAverages 
 } from '../../utils/dashboardUtils';
 
-const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCriteria, executives, executiveColorMap, onEvaluationSelect }) => {
+const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCriteria, executives, executiveColorMap, onEvaluationSelect, userRole }) => {
     const [chartState, setChartState] = useState({ view: 'bySubsection', selectedItem: null });
 
     const sectionEvaluations = useMemo(() => evaluations.filter(e => e.section === section.name), [evaluations, section.name]);
@@ -90,6 +90,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
                         overallAverage={overallAverage}
                         color={section.color}
                         onEvaluationSelect={onEvaluationSelect}
+                        userRole={userRole}
                     />
                 }
                 {executiveAverages.length > 0 && 

@@ -19,7 +19,7 @@ const Modal = ({ children, onClose }) => {
 };
 
 
-const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverage, color, onEvaluationSelect }) => {
+const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverage, color, onEvaluationSelect, userRole }) => {
     const [modalData, setModalData] = useState(null);
 
     const pluralize = (count, singular, plural) => (count === 1 ? singular : plural || `${singular}s`);
@@ -68,7 +68,7 @@ const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverag
                                             {Object.entries(metric.summary).map(([name, count]) => (
                                             <li key={name}>
                                                 {name}: {count}
-                                                {name === 'Sin Ingreso (N/A)' && count > 0 && (
+                                                {userRole === 'admin' && name === 'Sin Ingreso (N/A)' && count > 0 && (
                                                     <button 
                                                         onClick={() => handleOpenModal(metric.name, metric.emptyEvaluations)}
                                                         className="btn-link"
@@ -102,7 +102,7 @@ const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverag
             {modalData && (
                 <Modal onClose={handleCloseModal}>
                     <h2>Evaluaciones sin "{modalData.title}"</h2>
-                    <p>Haz clic en una evaluación para ver el detalle.</p>
+                    <p>Haz clic en una evaluación para verla y completarla.</p>
                     <ul className="config-list">
                         {modalData.evaluations.map(ev => (
                             <li key={ev.id} className="config-list-item" onClick={() => handleEvaluationClick(ev.id, ev.executiveId)}>

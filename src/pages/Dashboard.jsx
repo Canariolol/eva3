@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext'; // Importar useAuth
 import DashboardSection from '../components/Dashboard/DashboardSection';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { userRole } = useAuth(); // Obtener el rol del usuario
     const { 
         evaluations, 
         criteria, 
@@ -17,7 +19,6 @@ const Dashboard = () => {
         if (executiveId) {
             navigate(`/team?executiveId=${executiveId}&evaluationId=${evaluationId}`);
         } else {
-            // Fallback por si no se encuentra el ID del ejecutivo
             navigate('/team');
         }
     };
@@ -53,6 +54,7 @@ const Dashboard = () => {
                         executives={allExecutives}
                         executiveColorMap={executiveColorMap}
                         onEvaluationSelect={handleEvaluationSelect}
+                        userRole={userRole} // Pasar el rol al componente hijo
                     />
                 ))}
         </>

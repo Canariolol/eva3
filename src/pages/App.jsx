@@ -4,23 +4,26 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
+
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
+import Login from './components/Login'; 
+import ProtectedRoute from './components/ProtectedRoute';
+
 import './App.css';
 import Footer from './components/Footer';
 import Header from './components/Header';
 import './components/Header.css';
 
 const AppLayout = () => {
-  const { loading, error } = useGlobalContext();
-  const { currentUser } = useAuth();
+  const { loading: globalLoading, error } = useGlobalContext();
+  const { userRole, loading: authLoading } = useAuth();
   const location = useLocation();
-
   const projectId = db.app.options.projectId;
 
-  if (loading) {
+  if (globalLoading || authLoading) {
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
             <h1>Cargando aplicación...</h1>
@@ -60,14 +63,10 @@ const AppLayout = () => {
           <span>Evaluaciones, Calidad y Monitoreo</span>
         </div>
         <ul className="nav-list">
-          <li><NavLink to="/" end>Dashboard</NavLink></li>
+          {userRole === 'admin' && <li><NavLink to="/" end>Dashboard</NavLink></li>}
           <li><NavLink to="/team">Equipo</NavLink></li>
-          {currentUser && (
-            <>
-              <li><NavLink to="/evaluate">Evaluar</NavLink></li>
-              <li><NavLink to="/configuration">Configuración</NavLink></li>
-            </>
-          )}
+          <li><NavLink to="/evaluate">Evaluar</NavLink></li>
+          {userRole === 'admin' && <li><NavLink to="/configuration">Configuración</NavLink></li>}
         </ul>
       </nav>
       <div className="main-panel">
@@ -89,23 +88,39 @@ const AppLayout = () => {
   )
 };
 
-const PageRoutes = () => {
-    return (
-        <Routes>
-            <Route index element={<Dashboard />} />
-            <Route path="team" element={<Team />} />
-            <Route path="evaluate" element={<Evaluate />} />
-            <Route path="configuration" element={<Configuration />} />
-        </Routes>
-    )
-}
-
 function App() {
   return (
       <Router>
         <Routes>
-            <Route path="*" element={<AppLayout />}>
-                 <Route path="*" element={<PageRoutes />} />
+            <Route path="/login" element={<Login />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'executive']}>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+                <Route index element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <Dashboard />
+                    </ProtectedRoute>
+                } />
+                <Route path="team" element={
+                    <ProtectedRoute allowedRoles={['admin', 'executive']}>
+                        <Team />
+                    </ProtectedRoute>
+                } />
+                <Route path="evaluate" element={
+                    <ProtectedRoute allowedRoles={['admin', 'executive']}>
+                        <Evaluate />
+                    </ProtectedRoute>
+                } />
+                <Route path="configuration" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <Configuration />
+                    </ProtectedRoute>
+                } />
             </Route>
         </Routes>
       </Router>
