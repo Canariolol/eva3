@@ -42,3 +42,19 @@ a {
   color: var(--color-primary);
   text-decoration: none;
 }
+
+.btn-link {
+    background-color: transparent;
+    border: none;
+    font-family: var(--font-secondary);
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: none;
+    padding: 0 0.5rem;
+    font-size: 0.9rem;
+}
+
+.btn-link:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+}

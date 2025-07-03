@@ -1,19 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import CustomTooltip from '../components/Dashboard/CustomTooltip';
 import './Team.css';
-
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="custom-tooltip">
-        <p className="label">{`${payload[0].payload.name}`}</p>
-        <p className="intro">{`Promedio: ${payload[0].value.toFixed(2)}`}</p>
-      </div>
-    );
-  }
-  return null;
-};
 
 const Modal = ({ children, onClose, size = 'default' }) => {
     const [isClosing, setIsClosing] = useState(false);
@@ -35,12 +25,56 @@ const Modal = ({ children, onClose, size = 'default' }) => {
 
 const Team = () => {
     const { executives, evaluations, evaluationSections } = useGlobalContext();
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+
+    useEffect(() => {
+        const executiveId = searchParams.get('executiveId');
+        const evaluationId = searchParams.get('evaluationId');
+
+        if (executiveId && executives.length > 0) {
+            const executiveToSelect = executives.find(e => e.id === executiveId);
+            setSelectedExecutive(executiveToSelect || null);
+        } else {
+            setSelectedExecutive(null);
+        }
+        
+        if (evaluationId && evaluations.length > 0) {
+            const evaluationToSelect = evaluations.find(e => e.id === evaluationId);
+            setSelectedEvaluation(evaluationToSelect || null);
+        } else {
+            setSelectedEvaluation(null);
+        }
+    }, [searchParams, executives, evaluations]);
     
     const truncateName = (name) => {
         const words = name.split(' ');
         return words.length > 1 ? `${words[0]}...` : name;
+    };
+
+    const handleExecutiveCardClick = (executive) => {
+        // Navegación controlada por URL
+        setSearchParams({ executiveId: executive.id });
+    };
+
+    const handleCloseExecutiveModal = () => {
+        // Limpiar parámetros de URL para cerrar modales
+        setSearchParams({});
+    };
+
+    const handleSelectEvaluation = (evaluation) => {
+        // Añadir el ID de la evaluación a la URL para abrir el segundo modal
+        const currentParams = Object.fromEntries(searchParams.entries());
+        setSearchParams({ ...currentParams, evaluationId: evaluation.id });
+    };
+
+    const handleCloseEvaluationModal = () => {
+        // Quitar solo el ID de la evaluación, manteniendo el del ejecutivo
+        const currentParams = Object.fromEntries(searchParams.entries());
+        delete currentParams.evaluationId;
+        setSearchParams(currentParams);
     };
     
     const renderExecutiveDetails = () => {
@@ -48,7 +82,12 @@ const Team = () => {
 
         const executiveEvals = evaluations.filter(e => e.executive === selectedExecutive.Nombre);
         if (executiveEvals.length === 0) {
-            return <p>No hay evaluaciones registradas para este ejecutivo.</p>;
+            return (
+                <div className="executive-details-modal">
+                    <h2>{selectedExecutive.Nombre}</h2>
+                    <p>No hay evaluaciones registradas para este ejecutivo.</p>
+                </div>
+            );
         }
 
         const sectionsWithData = evaluationSections.map(section => {
@@ -102,7 +141,7 @@ const Team = () => {
                     {executiveEvals.map(ev => {
                         const sectionConfig = evaluationSections.find(s => s.name === ev.section);
                         return (
-                            <li key={ev.id} className="config-list-item" onClick={() => setSelectedEvaluation(ev)}>
+                            <li key={ev.id} className="config-list-item" onClick={() => handleSelectEvaluation(ev)}>
                                 <div>
                                     <strong>{ev.section}</strong>
                                     <span className="evaluation-dates">
@@ -126,7 +165,7 @@ const Team = () => {
         const sectionConfig = evaluationSections.find(s => s.name === selectedEvaluation.section);
 
         return (
-            <Modal onClose={() => setSelectedEvaluation(null)}>
+            <Modal onClose={handleCloseEvaluationModal}>
                 <div className="evaluation-detail-modal">
                     <h2>Detalle de la Evaluación</h2>
                     <p><strong>Fecha de Evaluación:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
@@ -178,7 +217,7 @@ const Team = () => {
             </p>
             <div className="team-grid">
                 {executives.map(exec => (
-                    <div key={exec.id} className="card team-card" onClick={() => setSelectedExecutive(exec)}>
+                    <div key={exec.id} className="card team-card" onClick={() => handleExecutiveCardClick(exec)}>
                         <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
                         <h2>{exec.Nombre}</h2>
                         <p>{exec.Cargo || 'N/A'}</p>
@@ -187,12 +226,12 @@ const Team = () => {
             </div>
 
             {selectedExecutive && (
-                <Modal onClose={() => setSelectedExecutive(null)} size="large">
+                <Modal onClose={handleCloseExecutiveModal} size="large">
                     {renderExecutiveDetails()}
                 </Modal>
             )}
 
-            {renderEvaluationDetailModal()}
+            {selectedEvaluation && renderEvaluationDetailModal()}
         </>
     );
 };

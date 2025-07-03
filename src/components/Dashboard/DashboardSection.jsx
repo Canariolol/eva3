@@ -11,7 +11,7 @@ import {
     processExecutiveAverages 
 } from '../../utils/dashboardUtils';
 
-const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCriteria, executives, executiveColorMap }) => {
+const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCriteria, executives, executiveColorMap, onEvaluationSelect }) => {
     const [chartState, setChartState] = useState({ view: 'bySubsection', selectedItem: null });
 
     const sectionEvaluations = useMemo(() => evaluations.filter(e => e.section === section.name), [evaluations, section.name]);
@@ -48,11 +48,14 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
     const dateField = section.name === 'Calidad de Desempeño' ? 'managementDate' : 'evaluationDate';
     const lineData = useMemo(() => processDataForLineChart(sectionEvaluations.filter(e => e[dateField]), dateField), [sectionEvaluations, dateField]);
     const barData = useMemo(() => processDataForBarChart(sectionEvaluations, section.name, criteriaConfig, chartState), [sectionEvaluations, section.name, criteriaConfig, chartState]);
-    const nonEvaluable = useMemo(() => processNonEvaluableData(sectionEvaluations, nonEvaluableCriteria, section.name), [sectionEvaluations, nonEvaluableCriteria, section.name]);
+    const nonEvaluable = useMemo(() => processNonEvaluableData(sectionEvaluations, nonEvaluableCriteria, section.name, executives), [sectionEvaluations, nonEvaluableCriteria, section.name, executives]);
     const executiveAverages = useMemo(() => processExecutiveAverages(sectionEvaluations), [sectionEvaluations]);
     const overallAverage = useMemo(() => executiveAverages.reduce((sum, exec) => sum + exec.average, 0) / (executiveAverages.length || 1), [executiveAverages]);
 
     if (sectionEvaluations.length === 0) return null;
+    
+    const executivesInLineChart = useMemo(() => [...new Set(sectionEvaluations.map(e => e.executive))], [sectionEvaluations]);
+
 
     return (
         <section className="dashboard-section">
@@ -63,7 +66,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
             <div className="dashboard-grid">
                 <div className="card">
                     <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>Progreso Comparativo</h4>
-                    <ResponsiveContainer width="100%" height={300}><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executives.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name] || '#ccc'} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={300}><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executivesInLineChart.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name] || '#ccc'} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer>
                 </div>
                 <div className="card">
                     <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>
@@ -86,6 +89,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
                         nonEvaluable={nonEvaluable}
                         overallAverage={overallAverage}
                         color={section.color}
+                        onEvaluationSelect={onEvaluationSelect}
                     />
                 }
                 {executiveAverages.length > 0 && 
@@ -101,4 +105,3 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
 };
 
 export default DashboardSection;
-

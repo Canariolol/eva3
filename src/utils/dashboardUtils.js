@@ -9,9 +9,17 @@ export const processDataForLineChart = (evaluations, dateField) => {
     const dataByDate = evaluations.reduce((acc, curr) => {
         const dateValue = curr[dateField];
         if (!dateValue || typeof dateValue.toLocaleDateString !== 'function') return acc;
+        
         const date = dateValue.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        if (!acc[date]) acc[date] = { date };
-        if (!acc[date][curr.executive]) acc[date][curr.executive] = [];
+        
+        if (!acc[date]) {
+            acc[date] = { date, originalDate: dateValue }; // Guardar la fecha original
+        }
+        
+        if (!acc[date][curr.executive]) {
+            acc[date][curr.executive] = [];
+        }
+
         const scores = Object.values(curr.scores);
         if (scores.length > 0) {
             const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
@@ -20,12 +28,19 @@ export const processDataForLineChart = (evaluations, dateField) => {
         return acc;
     }, {});
 
-    return Object.values(dataByDate).map(dateEntry => {
+    const dataArray = Object.values(dataByDate);
+
+    // Ordenar cronológicamente usando la fecha original
+    dataArray.sort((a, b) => a.originalDate - b.originalDate);
+
+    // Mapear al formato final para el gráfico
+    return dataArray.map(dateEntry => {
         const newDateEntry = { date: dateEntry.date };
         Object.keys(dateEntry).forEach(key => {
-            if (key !== 'date') {
+            if (key !== 'date' && key !== 'originalDate') { // Ignorar las claves de fecha
                 const executiveScores = dateEntry[key];
-                newDateEntry[key] = parseFloat((executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length).toFixed(2));
+                const avgScore = executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length;
+                newDateEntry[key] = parseFloat(avgScore.toFixed(2));
             }
         });
         return newDateEntry;
@@ -98,9 +113,10 @@ export const processDataForBarChart = (sectionEvaluations, sectionName, criteria
     }));
 };
 
-export const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria, sectionName) => {
+export const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria, sectionName, executives) => {
     const trackedCriteria = nonEvaluableCriteria.filter(c => c.section === sectionName && (c.trackInDashboard || c.trackEmptyInDashboard));
     let metrics = [];
+
     trackedCriteria.forEach(criterion => {
         if (criterion.trackInDashboard) {
             if (criterion.inputType === 'select') {
@@ -112,18 +128,44 @@ export const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria
                 metrics.push({ name: criterion.name, type: 'select', counts });
             } else {
                 const count = sectionEvaluations.reduce((acc, ev) => (ev.nonEvaluableData?.[criterion.name] ? acc + 1 : acc), 0);
-                metrics.push({ name: `${criterion.name} (Registrados)`, type: 'text', count });
+                metrics.push({ name: `${criterion.name}`, type: 'text', count });
             }
         }
+
         if (criterion.trackEmptyInDashboard) {
-            let responded = 0, pending = 0;
+            const emptyEvals = [];
+            let respondedCount = 0;
             sectionEvaluations.forEach(ev => {
                 const value = ev.nonEvaluableData?.[criterion.name];
-                (!value || value.trim() === '' || value.toLowerCase() === 'n/a') ? pending++ : responded++;
+                if (!value || value.trim() === '' || value.toLowerCase() === 'n/a') {
+                    const executive = executives.find(exec => exec.Nombre === ev.executive);
+                    emptyEvals.push({ 
+                        id: ev.id, 
+                        executive: ev.executive, 
+                        date: ev.evaluationDate,
+                        managementDate: ev.managementDate, // Añadir fecha de gestión
+                        executiveId: executive ? executive.id : null
+                    });
+                } else {
+                    respondedCount++;
+                }
             });
-            metrics.push({ name: `${criterion.name} (Resumen)`, type: 'select', counts: { 'Respondidos': responded, 'Pendientes (N/A)': pending }});
+
+            const metricName = `${criterion.name}`;
+            const summary = {
+                'Ingresados': respondedCount,
+                'Sin Ingreso (N/A)': emptyEvals.length
+            };
+            
+            metrics.push({ 
+                name: metricName, 
+                type: 'summary', 
+                summary: summary,
+                emptyEvaluations: emptyEvals
+            });
         }
     });
+
     return metrics;
 };
 

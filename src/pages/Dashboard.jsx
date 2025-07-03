@@ -1,14 +1,26 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import DashboardSection from '../components/Dashboard/DashboardSection';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const { 
         evaluations, 
         criteria, 
         nonEvaluableCriteria, 
-        evaluationSections 
+        evaluationSections,
+        executives: allExecutives
     } = useGlobalContext();
+
+    const handleEvaluationSelect = (evaluationId, executiveId) => {
+        if (executiveId) {
+            navigate(`/team?executiveId=${executiveId}&evaluationId=${evaluationId}`);
+        } else {
+            // Fallback por si no se encuentra el ID del ejecutivo
+            navigate('/team');
+        }
+    };
 
     if (evaluations.length === 0) {
         return (
@@ -19,8 +31,8 @@ const Dashboard = () => {
         );
     }
     
-    const executives = [...new Set(evaluations.map(e => e.executive))];
-    const executiveColorMap = executives.reduce((acc, exec, idx) => {
+    const executivesInEvaluations = [...new Set(evaluations.map(e => e.executive))];
+    const executiveColorMap = executivesInEvaluations.reduce((acc, exec, idx) => {
         acc[exec] = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'][idx % 6];
         return acc;
     }, {});
@@ -30,7 +42,7 @@ const Dashboard = () => {
             <h1>Dashboard de Evaluaciones</h1>
             
             {evaluationSections
-                .filter(section => section.showInDashboard) // <-- AÑADIDO: Filtra las secciones
+                .filter(section => section.showInDashboard)
                 .map((section) => (
                     <DashboardSection
                         key={section.id}
@@ -38,8 +50,9 @@ const Dashboard = () => {
                         evaluations={evaluations}
                         criteriaConfig={criteria}
                         nonEvaluableCriteria={nonEvaluableCriteria}
-                        executives={executives}
+                        executives={allExecutives}
                         executiveColorMap={executiveColorMap}
+                        onEvaluationSelect={handleEvaluationSelect}
                     />
                 ))}
         </>
