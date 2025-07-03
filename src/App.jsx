@@ -4,10 +4,13 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
+
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
+import ProtectedRoute from './components/ProtectedRoute'; // Importamos el guardia
+
 import './App.css';
 import Footer from './components/Footer';
 import Header from './components/Header';
@@ -94,8 +97,22 @@ function App() {
           <Route path="/" element={<AppLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="team" element={<Team />} />
-              <Route path="evaluate" element={<Evaluate />} />
-              <Route path="configuration" element={<Configuration />} />
+              <Route 
+                  path="evaluate" 
+                  element={
+                      <ProtectedRoute>
+                          <Evaluate />
+                      </ProtectedRoute>
+                  } 
+              />
+              <Route 
+                  path="configuration" 
+                  element={
+                      <ProtectedRoute>
+                          <Configuration />
+                      </ProtectedRoute>
+                  } 
+              />
           </Route>
       </Routes>
   );
