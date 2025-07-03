@@ -174,11 +174,11 @@ const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria, secti
       });
       
       metrics.push({
-          name: `${criterion.name} (Resumen)`,
+          name: `${criterion.name}/s`,
           type: 'select',
           counts: {
-              'Respondidos': responded,
-              'Pendientes (N/A)': pending,
+              'Ingresados': responded,
+              'Sin Ingreso (N/A)': pending,
           }
       });
     }
