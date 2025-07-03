@@ -77,7 +77,7 @@ const AppLayout = () => {
         <main className="main-content">
           <TransitionGroup>
             <CSSTransition
-              key={location.key}
+              key={location.pathname} 
               classNames="page-fade"
               timeout={300}
             >
