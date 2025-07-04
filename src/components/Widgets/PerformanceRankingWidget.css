@@ -1,0 +1,11 @@
+.performance-ranking-list .ranking-position {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--color-secondary);
+    width: 25px;
+    text-align: center;
+}
+
+.performance-ranking-list .evaluation-avg {
+    font-size: 1rem;
+}

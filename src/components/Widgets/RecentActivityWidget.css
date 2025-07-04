@@ -1,0 +1,8 @@
+.recent-activity-list .config-list-item {
+    padding: 10px 0; /* Un poco menos de padding vertical */
+}
+
+.recent-activity-list .evaluation-dates {
+    font-size: 0.85rem;
+    color: var(--color-secondary);
+}

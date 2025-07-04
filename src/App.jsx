@@ -9,16 +9,18 @@ import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
-import ProtectedRoute from './components/ProtectedRoute'; // Importamos el guardia
+import ProtectedRoute from './components/ProtectedRoute';
 
 import './App.css';
 import Footer from './components/Footer';
 import Header from './components/Header';
+import CustomTab from './pages/CustomTab';
 
 const AppLayout = () => {
-  const { loading, error } = useGlobalContext();
+  const { loading, error, customTabs } = useGlobalContext();
   const { currentUser } = useAuth();
   const location = useLocation();
+  const nodeRef = React.useRef(null);
 
   const projectId = db.app.options.projectId;
 
@@ -64,6 +66,11 @@ const AppLayout = () => {
         <ul className="nav-list">
           <li><NavLink to="/" end>Dashboard</NavLink></li>
           <li><NavLink to="/team">Equipo</NavLink></li>
+          {customTabs.map(tab => (
+            <li key={tab.id}>
+              <NavLink to={`/tabs/${tab.id}`}>{tab.name}</NavLink>
+            </li>
+          ))}
           {currentUser && (
             <>
               <li><NavLink to="/evaluate">Evaluar</NavLink></li>
@@ -77,11 +84,16 @@ const AppLayout = () => {
         <main className="main-content">
           <TransitionGroup>
             <CSSTransition
-              key={location.pathname} 
-              classNames="page-fade"
+              key={location.pathname}
+              nodeRef={nodeRef}
               timeout={300}
+              classNames="page-fade"
+              mountOnEnter
+              unmountOnExit
             >
-              <Outlet />
+              <div ref={nodeRef} className="page-container">
+                <Outlet />
+              </div>
             </CSSTransition>
           </TransitionGroup>
         </main>
@@ -97,6 +109,7 @@ function App() {
           <Route path="/" element={<AppLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="team" element={<Team />} />
+              <Route path="tabs/:tabId" element={<CustomTab />} />
               <Route 
                   path="evaluate" 
                   element={

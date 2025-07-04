@@ -1,0 +1,15 @@
+.quick-chart-widget .widget-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.quick-chart-widget .card-title {
+    margin-bottom: 1rem;
+}
+
+.quick-chart-widget .widget-config {
+    padding: 1rem;
+}

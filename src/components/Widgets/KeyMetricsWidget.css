@@ -1,0 +1,23 @@
+.key-metrics-widget .widget-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.key-metrics-widget .card-title {
+    margin-bottom: 1rem;
+}
+
+.key-metrics-widget .metric-value {
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--color-primary);
+    text-align: center;
+    margin: 1rem 0;
+}
+
+.key-metrics-widget .widget-config {
+    padding: 1rem;
+}

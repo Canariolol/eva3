@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     if (!userRole) {
         // Si no hay rol (o no está logueado), redirigir a login
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/" state={{ from: location }} replace />;
     }
     
     if (allowedRoles && !allowedRoles.includes(userRole)) {

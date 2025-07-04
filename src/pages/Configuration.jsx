@@ -12,6 +12,7 @@ import ManageSubsections from '../components/Configuration/ManageSubsections';
 import ManageEvaluableCriteria from '../components/Configuration/ManageEvaluableCriteria';
 import ManageNonEvaluableCriteria from '../components/Configuration/ManageNonEvaluableCriteria';
 import ManageExecutiveFields from '../components/Configuration/ManageExecutiveFields';
+import ManageCustomTabs from '../components/Configuration/ManageCustomTabs'; // Importar el nuevo componente
 import CollapsibleCard from '../components/CollapsibleCard';
 
 const Configuration = () => {
@@ -23,6 +24,7 @@ const Configuration = () => {
         aptitudeSubsections, 
         executiveFields, 
         evaluationSections,
+        customTabs, // Añadir customTabs del contexto
         headerInfo,
         headerInfoId,
         refreshData,
@@ -111,6 +113,11 @@ const Configuration = () => {
             delete dataToSave.options;
         }
         await addDoc(collection(db, 'nonEvaluableCriteria'), dataToSave);
+        await refreshData();
+    };
+
+    const handleSaveCustomTab = async (newTab) => {
+        await addDoc(collection(db, 'customTabs'), newTab);
         await refreshData();
     };
 
@@ -270,6 +277,12 @@ const Configuration = () => {
                     handleSaveField={handleSaveField}
                     handleEditClick={handleEditClick}
                     handleDelete={handleDelete}
+                />
+
+                <ManageCustomTabs
+                    customTabs={customTabs}
+                    onSave={handleSaveCustomTab}
+                    onDelete={(tabId) => handleDelete('customTabs', tabId)}
                 />
                 
                 <div className="card">
