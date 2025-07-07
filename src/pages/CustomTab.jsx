@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { useAuth } from '../context/AuthContext';
@@ -78,17 +78,17 @@ const CustomTab = () => {
         setCurrentTab(foundTab);
     }, [tabId, customTabs]);
     
-    const fetchWidgets = async () => {
+    const fetchWidgets = useCallback(async () => {
         if (!tabId) return;
         const widgetsCollection = collection(db, 'customTabs', tabId, 'widgets');
         const widgetSnapshot = await getDocs(widgetsCollection);
         const fetchedWidgets = widgetSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setWidgets(fetchedWidgets);
-    };
+    }, [tabId]);
 
     useEffect(() => {
         fetchWidgets();
-    }, [tabId]);
+    }, [fetchWidgets]);
 
     const handleAddWidget = async (widgetType) => {
         const newWidget = { 
@@ -111,16 +111,35 @@ const CustomTab = () => {
         }
     };
     
-    const onLayoutChange = async (layout, allLayouts) => {
+    const onLayoutChange = (layout, allLayouts) => {
+        // Actualiza el estado local inmediatamente para que la UI no "salte"
+        const updatedWidgets = widgets.map(widget => {
+            const layoutItem = layout.find(item => item.i === widget.id);
+            return layoutItem ? { ...widget, layout: { ...widget.layout, ...layoutItem } } : widget;
+        });
+        setWidgets(updatedWidgets);
         setLayouts(allLayouts);
+        
+        // Guarda los cambios en la base de datos en segundo plano
         const batch = writeBatch(db);
         layout.forEach(item => {
             const widgetRef = doc(db, 'customTabs', tabId, 'widgets', item.i);
             batch.update(widgetRef, {
-                layout: { x: item.x, y: item.y, w: item.w, h: item.h }
+                'layout.x': item.x,
+                'layout.y': item.y,
+                'layout.w': item.w,
+                'layout.h': item.h,
             });
         });
-        await batch.commit();
+        batch.commit();
+    };
+    
+    const handleInteractionStart = () => {
+        document.body.classList.add('is-resizing');
+    };
+    
+    const handleInteractionStop = () => {
+        document.body.classList.remove('is-resizing');
     };
 
     const renderWidget = (widget) => {
@@ -130,7 +149,10 @@ const CustomTab = () => {
             tabId,
             userRole,
             isEditing: editingWidgetId === widget.id,
-            onEditingComplete: () => setEditingWidgetId(null),
+            onEditingComplete: () => {
+                setEditingWidgetId(null);
+                fetchWidgets();
+            },
         };
         const components = {
             pinnedNotes: <PinnedNotesWidget {...props} />,
@@ -186,11 +208,14 @@ const CustomTab = () => {
                 cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
                 rowHeight={30}
                 onLayoutChange={onLayoutChange}
+                onDragStart={handleInteractionStart}
+                onDragStop={handleInteractionStop}
+                onResizeStart={handleInteractionStart}
+                onResizeStop={handleInteractionStop}
                 isDraggable={userRole === 'admin'}
                 isResizable={userRole === 'admin'}
                 draggableHandle=".widget-header"
-                compactType={null}
-                preventCollision={true} 
+                compactType="vertical"
             >
                 {widgets.map(widget => (
                     <div key={widget.id} data-grid={widget.layout || { x: 0, y: 0, w: 4, h: 5 }}>
