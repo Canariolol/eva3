@@ -139,6 +139,17 @@ const CustomTab = () => {
     const handleInteractionStop = () => {
         document.body.classList.remove('is-resizing');
     };
+    
+    const handleEditingComplete = (widgetId, newConfig) => {
+        if (newConfig) {
+            setWidgets(prevWidgets =>
+                prevWidgets.map(w =>
+                    w.id === widgetId ? { ...w, ...newConfig } : w
+                )
+            );
+        }
+        setEditingWidgetId(null);
+    };
 
     const renderWidget = (widget) => {
         const props = {
@@ -147,10 +158,7 @@ const CustomTab = () => {
             tabId,
             userRole,
             isEditing: editingWidgetId === widget.id,
-            onEditingComplete: () => {
-                setEditingWidgetId(null);
-                fetchWidgets();
-            },
+            onEditingComplete: (newConfig) => handleEditingComplete(widget.id, newConfig),
         };
         const components = {
             pinnedNotes: <PinnedNotesWidget {...props} />,
@@ -177,6 +185,11 @@ const CustomTab = () => {
             const source = widget.trackingType === 'section' ? evaluationSections : criteria;
             const item = source.find(i => i.id === widget.trackingId);
             return item ? `Atención: ${item.name}` : 'Necesita Atención';
+        }
+
+        if (widget.type === 'quickChart' && widget.criterionId) {
+            const item = criteria.find(c => c.id === widget.criterionId);
+            return item ? `Gráfico: ${item.name}` : 'Gráfico Rápido';
         }
         
         return defaultTitles[widget.type] || 'Widget';

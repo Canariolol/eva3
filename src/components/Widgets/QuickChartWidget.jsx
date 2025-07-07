@@ -8,13 +8,11 @@ import CustomTooltip from '../Dashboard/CustomTooltip';
 const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
     const { criteria, evaluations, executives } = useGlobalContext();
     
-    // Estado local para manejar la configuración mientras se edita
     const [config, setConfig] = useState({
         criterionId: widget.criterionId || '',
         chartType: widget.chartType || 'bar'
     });
 
-    // Sincronizar el estado de configuración si el modo de edición cambia
     useEffect(() => {
         if (isEditing) {
             setConfig({
@@ -24,13 +22,11 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
         }
     }, [isEditing, widget]);
 
-    // Lógica para encontrar el criterio seleccionado basado en la prop del widget
     const selectedCriterion = useMemo(() => {
         if (!widget.criterionId) return null;
         return criteria.find(c => c.id === widget.criterionId);
     }, [widget.criterionId, criteria]);
 
-    // Lógica para calcular los datos del gráfico, ahora depende del criterio seleccionado
     const chartData = useMemo(() => {
         if (!selectedCriterion) return [];
 
@@ -38,7 +34,6 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
             const relevantEvals = evaluations.filter(
                 e => e.executive === exec.Nombre && e.scores && typeof e.scores[selectedCriterion.name] === 'number'
             );
-
             if (relevantEvals.length === 0) return null;
 
             const totalScore = relevantEvals.reduce((sum, e) => sum + e.scores[selectedCriterion.name], 0);
@@ -49,26 +44,24 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
                 shortName: exec.Nombre.split(' ')[0],
                 'Puntaje': average,
             };
-        }).filter(Boolean); // Eliminar ejecutivos sin datos para este criterio
+        }).filter(Boolean);
 
     }, [selectedCriterion, evaluations, executives]);
 
     const handleSave = async () => {
         await updateDoc(doc(db, 'customTabs', tabId, 'widgets', widget.id), config);
-        onEditingComplete(); // Notificar al padre que la edición ha terminado
+        onEditingComplete(config); // Devolver la nueva configuración al padre
     };
 
-    // Función completa para renderizar el gráfico correcto
     const renderChart = () => {
         const chartType = widget.chartType || 'bar';
-
         if (chartData.length === 0) {
             return <p style={{textAlign: 'center', padding: '1rem'}}>No hay datos para mostrar con la configuración actual.</p>;
         }
 
         const commonProps = {
             width: "100%",
-            height: 250, // Ajustar altura para que quepa bien
+            height: 250,
             data: chartData,
             margin: { top: 5, right: 20, left: 0, bottom: 40 }
         };
@@ -131,7 +124,7 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
                     </div>
                     <div style={{display: 'flex', gap: '1rem'}}>
                         <button className="btn btn-primary" onClick={handleSave}>Guardar</button>
-                        <button className="btn btn-secondary" onClick={onEditingComplete}>Cancelar</button>
+                        <button className="btn btn-secondary" onClick={() => onEditingComplete()}>Cancelar</button>
                     </div>
                 </div>
             ) : (
