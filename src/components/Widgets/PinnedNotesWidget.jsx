@@ -6,14 +6,15 @@ const PinnedNotesWidget = ({ widget, tabId, userRole, isEditing, onEditingComple
     const [notes, setNotes] = useState(widget.notes || '');
 
     useEffect(() => {
-        if (!isEditing) {
+        if (isEditing) {
             setNotes(widget.notes || '');
         }
     }, [isEditing, widget.notes]);
 
     const handleSave = async () => {
         await updateDoc(doc(db, 'customTabs', tabId, 'widgets', widget.id), { notes });
-        onEditingComplete();
+        // Notificar al padre con la nueva configuración para que la UI se actualice al instante
+        onEditingComplete({ notes: notes });
     };
 
     return (
@@ -29,7 +30,7 @@ const PinnedNotesWidget = ({ widget, tabId, userRole, isEditing, onEditingComple
                     />
                     <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
                         <button onClick={handleSave} className="btn btn-primary">Guardar</button>
-                        <button onClick={onEditingComplete} className="btn btn-secondary">Cancelar</button>
+                        <button onClick={() => onEditingComplete()} className="btn btn-secondary">Cancelar</button>
                     </div>
                 </>
             ) : (

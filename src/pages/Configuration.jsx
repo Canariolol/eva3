@@ -280,9 +280,12 @@ const Configuration = () => {
                 />
 
                 <ManageCustomTabs
-                    customTabs={customTabs}
-                    onSave={handleSaveCustomTab}
-                    onDelete={(tabId) => handleDelete('customTabs', tabId)}
+    customTabs={customTabs}
+    currentUser={currentUser}
+    onSave={handleSaveCustomTab}
+    onDelete={(tabId) => handleDelete('customTabs', tabId)}
+    // 👇 Esta es la línea que necesitas añadir o completar
+    onEdit={(tab) => handleEditClick(tab, 'customTabs', [{ name: 'name', label: 'Nombre de la Pestaña' }])}
                 />
                 
                 <div className="card">
