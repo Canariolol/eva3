@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
@@ -23,6 +23,11 @@ const AppLayout = () => {
     const { userRole, loading: authLoading, currentUser } = useAuth();
     const location = useLocation();
     const projectId = db.app.options.projectId;
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+    const toggleSidebar = () => {
+        setSidebarOpen(!isSidebarOpen);
+    };
 
     if (globalLoading || authLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
@@ -39,7 +44,10 @@ const AppLayout = () => {
                     Conectado a: <strong>{projectId}</strong>
                 </div>
             )}
-            <nav className="sidebar">
+             <button className="sidebar-toggle" onClick={toggleSidebar}>
+                ☰
+            </button>
+            <nav className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
                     <h3>Eva3</h3>
                     <span>Evaluaciones, Calidad y Monitoreo</span>
