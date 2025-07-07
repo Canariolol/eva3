@@ -7,12 +7,13 @@ import CustomTooltip from '../Dashboard/CustomTooltip';
 
 const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
     const { criteria, evaluations, executives } = useGlobalContext();
-    
+
     const [config, setConfig] = useState({
         criterionId: widget.criterionId || '',
         chartType: widget.chartType || 'bar'
     });
 
+    // Sync local editing state when entering edit mode
     useEffect(() => {
         if (isEditing) {
             setConfig({
@@ -22,12 +23,10 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
         }
     }, [isEditing, widget]);
 
-    const selectedCriterion = useMemo(() => {
-        if (!widget.criterionId) return null;
-        return criteria.find(c => c.id === widget.criterionId);
-    }, [widget.criterionId, criteria]);
-
     const chartData = useMemo(() => {
+        // The dependency on widget.criterionId is key.
+        // It ensures this recalculates when the parent passes down an updated widget prop.
+        const selectedCriterion = criteria.find(c => c.id === widget.criterionId);
         if (!selectedCriterion) return [];
 
         return executives.map(exec => {
@@ -46,17 +45,20 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
             };
         }).filter(Boolean);
 
-    }, [selectedCriterion, evaluations, executives]);
+    }, [widget.criterionId, evaluations, executives, criteria]);
 
     const handleSave = async () => {
         await updateDoc(doc(db, 'customTabs', tabId, 'widgets', widget.id), config);
-        onEditingComplete(config); // Devolver la nueva configuración al padre
+        onEditingComplete(config); // Pass the new config to the parent to update state instantly
     };
 
     const renderChart = () => {
         const chartType = widget.chartType || 'bar';
+        if (!widget.criterionId) {
+            return <p style={{ textAlign: 'center', padding: '1rem' }}>Este widget no está configurado.</p>;
+        }
         if (chartData.length === 0) {
-            return <p style={{textAlign: 'center', padding: '1rem'}}>No hay datos para mostrar con la configuración actual.</p>;
+            return <p style={{ textAlign: 'center', padding: '1rem' }}>No hay datos para el criterio seleccionado.</p>;
         }
 
         const commonProps = {
@@ -94,7 +96,7 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
     };
 
     return (
-        <div>
+        <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
             {isEditing ? (
                  <div className="widget-config">
                     <h5>Configurar Gráfico</h5>
@@ -128,7 +130,9 @@ const QuickChartWidget = ({ widget, tabId, isEditing, onEditingComplete }) => {
                     </div>
                 </div>
             ) : (
-                renderChart()
+                <div style={{flexGrow: 1}}>
+                    {renderChart()}
+                </div>
             )}
         </div>
     );

@@ -153,7 +153,6 @@ const CustomTab = () => {
 
     const renderWidget = (widget) => {
         const props = {
-            key: widget.id,
             widget,
             tabId,
             userRole,

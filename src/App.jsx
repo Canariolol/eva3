@@ -18,10 +18,9 @@ import CustomTab from './pages/CustomTab';
 
 const AppLayout = () => {
   const { loading, error, customTabs } = useGlobalContext();
-  const { currentUser } = useAuth();
+  const { userRole } = useAuth();
   const location = useLocation();
-  const nodeRef = React.useRef(null);
-
+  
   const projectId = db.app.options.projectId;
 
   if (loading) {
@@ -64,38 +63,31 @@ const AppLayout = () => {
           <span>Evaluaciones, Calidad y Monitoreo</span>
         </div>
         <ul className="nav-list">
-          <li><NavLink to="/" end>Dashboard</NavLink></li>
+          {userRole === 'admin' && <li><NavLink to="/" end>Dashboard</NavLink></li>}
           <li><NavLink to="/team">Equipo</NavLink></li>
           {customTabs.map(tab => (
             <li key={tab.id}>
               <NavLink to={`/tabs/${tab.id}`}>{tab.name}</NavLink>
             </li>
           ))}
-          {currentUser && (
+          {userRole === 'admin' &&
             <>
               <li><NavLink to="/evaluate">Evaluar</NavLink></li>
               <li><NavLink to="/configuration">Configuración</NavLink></li>
             </>
-          )}
+          }
         </ul>
       </nav>
       <div className="main-panel">
         <Header />
         <main className="main-content">
-          <TransitionGroup>
-            <CSSTransition
-              key={location.pathname}
-              nodeRef={nodeRef}
-              timeout={300}
-              classNames="page-fade"
-              mountOnEnter
-              unmountOnExit
-            >
-              <div ref={nodeRef} className="page-container">
-                <Outlet />
-              </div>
-            </CSSTransition>
-          </TransitionGroup>
+            <TransitionGroup component={null}>
+              <CSSTransition key={location.pathname} classNames="page-fade" timeout={300}>
+                <div className="page-container">
+                  <Outlet />
+                </div>
+              </CSSTransition>
+            </TransitionGroup>
         </main>
         <Footer />
       </div>
@@ -105,29 +97,21 @@ const AppLayout = () => {
 
 function App() {
   return (
-      <Routes>
-          <Route path="/" element={<AppLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="team" element={<Team />} />
-              <Route path="tabs/:tabId" element={<CustomTab />} />
-              <Route 
-                  path="evaluate" 
-                  element={
-                      <ProtectedRoute>
-                          <Evaluate />
-                      </ProtectedRoute>
-                  } 
-              />
-              <Route 
-                  path="configuration" 
-                  element={
-                      <ProtectedRoute>
-                          <Configuration />
-                      </ProtectedRoute>
-                  } 
-              />
-          </Route>
-      </Routes>
+    <Routes>
+        <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route index element={<ProtectedRoute allowedRoles={['admin']}><Dashboard /></ProtectedRoute>} />
+          <Route path="team" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><Team /></ProtectedRoute>} />
+          <Route path="tabs/:tabId" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><CustomTab /></ProtectedRoute>} />
+          <Route 
+              path="evaluate" 
+              element={<ProtectedRoute allowedRoles={['admin']}><Evaluate /></ProtectedRoute>} 
+          />
+          <Route 
+              path="configuration" 
+              element={<ProtectedRoute allowedRoles={['admin']}><Configuration /></ProtectedRoute>} 
+          />
+        </Route>
+    </Routes>
   );
 }
 
