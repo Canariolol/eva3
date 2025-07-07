@@ -16,6 +16,7 @@ const ManageSections = ({
     const [newSection, setNewSection] = useState({ 
         name: '', 
         description: '', 
+        displayDescription: false, // Nuevo campo
         color: '#007bff', 
         includeManagementDate: false,
         showInDashboard: true
@@ -25,7 +26,7 @@ const ManageSections = ({
         e.preventDefault();
         onSave(newSection);
         setIsAdding(false);
-        setNewSection({ name: '', description: '', color: '#007bff', includeManagementDate: false, showInDashboard: true });
+        setNewSection({ name: '', description: '', displayDescription: false, color: '#007bff', includeManagementDate: false, showInDashboard: true });
     };
 
     return (
@@ -46,8 +47,14 @@ const ManageSections = ({
                                     <input type="text" className="form-control" value={newSection.name} onChange={(e) => setNewSection({ ...newSection, name: e.target.value })} />
                                 </div>
                                 <div className="form-group">
-                                    <label>Descripción (para tooltip)</label>
+                                    <label>Descripción</label>
                                     <textarea className="form-control" rows="3" value={newSection.description} onChange={(e) => setNewSection({ ...newSection, description: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                                        <input type="checkbox" checked={newSection.displayDescription} onChange={(e) => setNewSection({ ...newSection, displayDescription: e.target.checked })} />
+                                        <span style={{ marginLeft: '10px' }}>Desplegar Descripción</span>
+                                    </label>
                                 </div>
                                 <div className="form-group">
                                     <label>Color</label>
@@ -89,6 +96,7 @@ const ManageSections = ({
                                     <button className="btn-icon" onClick={() => onEdit(section, 'evaluationSections', [
                                         { name: 'name', label: 'Nombre de la Sección' },
                                         { name: 'description', label: 'Descripción', type: 'textarea' },
+                                        { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
                                         { name: 'color', label: 'Color', type: 'color_picker' },
                                         { name: 'includeManagementDate', label: 'Funcionalidad Extra', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' },
                                         { name: 'showInDashboard', label: 'Visibilidad', type: 'checkbox', checkboxLabel: 'Incluir sección en Dashboard' }

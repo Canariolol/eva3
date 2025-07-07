@@ -450,3 +450,24 @@ h1 {
   transform: scale(0.95);
   transition: opacity 300ms, transform 300ms;
 }
+
+.description-box {
+    background-color: var(--color-primary-pastel);
+    border-left: 4px solid var(--color-primary);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.description-box p {
+    margin: 0;
+    color: var(--color-primary-dark);
+    font-style: italic;
+}
+
+.description-text {
+    font-size: 0.9rem;
+    color: var(--color-secondary);
+    margin: -0.5rem 0 0.5rem 0;
+    font-style: italic;
+}

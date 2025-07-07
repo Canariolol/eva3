@@ -3,84 +3,82 @@ import Tooltip from '../Tooltip';
 import CollapsibleCard from '../CollapsibleCard';
 
 const ManageSubsections = ({ 
-    evaluationSections,
-    aptitudeSubsections,
-    currentUser,
+    evaluationSections, 
+    aptitudeSubsections, 
+    currentUser, 
     handleSaveSubsection,
-    handleEditClick,
+    handleEditClick, 
     handleMoveSubsection,
-    handleDelete
+    handleDelete 
 }) => {
-    const [isAdding, setIsAdding] = useState(false);
-    const [newSubsection, setNewSubsection] = useState({ name: '', section: evaluationSections[0]?.name || '' });
+    const [selectedSection, setSelectedSection] = useState(evaluationSections[0]?.name || '');
+    const [newSubsection, setNewSubsection] = useState({ 
+        name: '', 
+        description: '', 
+        displayDescription: false 
+    });
 
-    const handleSave = (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        handleSaveSubsection(newSubsection);
-        setIsAdding(false);
-        setNewSubsection({ name: '', section: newSubsection.section });
+        if (newSubsection.name.trim() && selectedSection) {
+            handleSaveSubsection({ ...newSubsection, section: selectedSection });
+            setNewSubsection({ name: '', description: '', displayDescription: false });
+        }
     };
 
-    const groupedSubsections = aptitudeSubsections.reduce((acc, sub) => {
-        const sectionName = sub.section || 'Sin Asignar';
-        if (!acc[sectionName]) {
-            acc[sectionName] = [];
-        }
-        acc[sectionName].push(sub);
-        return acc;
-    }, {});
-
-    const sectionOrder = [...evaluationSections.map(s => s.name)];
-    if (groupedSubsections['Sin Asignar'] && !sectionOrder.includes('Sin Asignar')) {
-        sectionOrder.push('Sin Asignar');
-    }
+    const filteredSubsections = aptitudeSubsections.filter(sub => sub.section === selectedSection);
 
     return (
         <div className="card">
             <h4 className="card-title card-title-primary">Gestionar Subsecciones</h4>
             <CollapsibleCard>
                 {currentUser && (
-                    <form onSubmit={handleSave} style={{marginBottom: '2rem'}}>
+                    <form onSubmit={handleSubmit} style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                         <div className="form-group">
-                            <label>Nombre de la Subsección</label>
-                            <input type="text" className="form-control" value={newSubsection.name} onChange={(e) => setNewSubsection({...newSubsection, name: e.target.value})}/>
-                        </div>
-                        <div className="form-group">
-                            <label>Asignar a Sección Principal</label>
-                            <select className="form-control" value={newSubsection.section} onChange={(e) => setNewSubsection({...newSubsection, section: e.target.value})}>
-                                <option value="" disabled>Selecciona una sección</option>
+                            <label>Sección Principal</label>
+                            <select className="form-control" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
                                 {evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                             </select>
                         </div>
-                        <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Subsección</button>
+                        <div className="form-group">
+                            <label>Nombre de la Subsección</label>
+                            <input type="text" className="form-control" value={newSubsection.name} onChange={(e) => setNewSubsection({ ...newSubsection, name: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Descripción</label>
+                            <textarea className="form-control" rows="2" value={newSubsection.description} onChange={(e) => setNewSubsection({ ...newSubsection, description: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input type="checkbox" checked={newSubsection.displayDescription} onChange={(e) => setNewSubsection({ ...newSubsection, displayDescription: e.target.checked })} />
+                                <span style={{ marginLeft: '10px' }}>Desplegar Descripción</span>
+                            </label>
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Guardar Subsección</button>
                     </form>
                 )}
-                {sectionOrder.map(sectionName => {
-                    const subs = groupedSubsections[sectionName] ? groupedSubsections[sectionName].sort((a,b) => a.order - b.order) : [];
-                    if (subs.length === 0) return null;
-                    return (
-                        <div key={sectionName}>
-                            <h5 className="config-list-subheader">{sectionName}</h5>
-                            <ul className="config-list">
-                                {subs.map((sub, index) => (
-                                    <li key={sub.id} className="config-list-item">
-                                        <Tooltip text="Subsección de Criterios">
-                                            <span>{sub.name}</span>
-                                        </Tooltip>
-                                        {currentUser && (
-                                        <div className="config-actions">
-                                            <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [{ name: 'name', label: 'Nombre' }, { name: 'section', label: 'Sección Principal', type: 'select', options: evaluationSections.map(s => ({value: s.name, label: s.name})) }])}>✏️</button>
-                                            <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, sectionName, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
-                                            <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, sectionName, 'down')} disabled={index === subs.length - 1} title="Mover hacia abajo">↓</button>
-                                            <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('aptitudeSubsections', sub.id)}>🗑️</button>
-                                        </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )
-                })}
+                <ul className="config-list">
+                    {filteredSubsections.map((sub, index) => (
+                         <li key={sub.id} className="config-list-item">
+                             <Tooltip text={sub.description || 'Sin descripción'}>
+                                 <span>{sub.name}</span>
+                             </Tooltip>
+                             {currentUser && (
+                             <div className="config-actions">
+                                 <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [
+                                     { name: 'name', label: 'Nombre' },
+                                     { name: 'description', label: 'Descripción', type: 'textarea' },
+                                     { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
+                                     { name: 'section', label: 'Sección Principal', type: 'select', options: evaluationSections.map(s => ({value: s.name, label: s.name})) }
+                                 ])}>✏️</button>
+                                 <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, selectedSection, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
+                                 <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, selectedSection, 'down')} disabled={index === filteredSubsections.length - 1} title="Mover hacia abajo">↓</button>
+                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('aptitudeSubsections', sub.id)}>🗑️</button>
+                             </div>
+                             )}
+                         </li>
+                    ))}
+                </ul>
             </CollapsibleCard>
         </div>
     );

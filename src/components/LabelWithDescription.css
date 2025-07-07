@@ -1,0 +1,12 @@
+.label-with-description .label-title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.label-with-description .description-text {
+    font-size: 0.9rem;
+    color: var(--color-secondary);
+    margin: 5px 0 0 0;
+    font-style: italic;
+}

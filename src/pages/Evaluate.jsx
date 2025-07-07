@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, doc, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
 import ScoreSelector from '../components/ScoreSelector';
-import Tooltip from '../components/Tooltip';
 import '../components/ScoreSelector.css';
 
-const LabelWithTooltip = ({ text, tooltipText }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <span>{text}</span>
-        {tooltipText && (
-            <Tooltip text={tooltipText}>
-                <span className="info-icon">i</span>
-            </Tooltip>
-        )}
-    </div>
-);
-
 const Evaluate = () => {
-    const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, refreshData } = useGlobalContext();
+    const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, evaluations, refreshData } = useGlobalContext();
+    const [searchParams] = useSearchParams();
     
+    const [evaluationId, setEvaluationId] = useState(null);
     const [evaluationType, setEvaluationType] = useState('');
     const [groupedCriteria, setGroupedCriteria] = useState({});
     const [filteredNonEvaluableCriteria, setFilteredNonEvaluableCriteria] = useState([]);
@@ -32,13 +23,30 @@ const Evaluate = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (evaluationSections.length > 0 && !evaluationType) {
-            setEvaluationType(evaluationSections[0].name);
+        const id = searchParams.get('evaluationId');
+        if (id && evaluations.length > 0) {
+            const existingEvaluation = evaluations.find(e => e.id === id);
+            if (existingEvaluation) {
+                setEvaluationId(id);
+                setEvaluationType(existingEvaluation.section);
+                setSelectedExecutive(existingEvaluation.executive);
+                setScores(existingEvaluation.scores || {});
+                setNonEvaluableData(existingEvaluation.nonEvaluableData || {});
+                setObservations(existingEvaluation.observations || '');
+                if (existingEvaluation.managementDate) {
+                    setManagementDate(new Date(existingEvaluation.managementDate.seconds * 1000).toISOString().slice(0,10));
+                }
+            }
+        } else {
+            setEvaluationId(null);
+            if (evaluationSections.length > 0 && !evaluationType) {
+                setEvaluationType(evaluationSections[0].name);
+            }
+            if (executives.length > 0 && !selectedExecutive) {
+                setSelectedExecutive(executives[0].Nombre);
+            }
         }
-        if (executives.length > 0 && !selectedExecutive) {
-            setSelectedExecutive(executives[0].Nombre);
-        }
-    }, [executives, evaluationSections, evaluationType, selectedExecutive]);
+    }, [searchParams, evaluations, executives, evaluationSections]);
 
     useEffect(() => {
         if (!evaluationType) return;
@@ -66,18 +74,20 @@ const Evaluate = () => {
 
         setFilteredNonEvaluableCriteria(filteredNonEvaluable);
         
-        const initialScores = {};
-        filteredEvaluable.forEach(c => { initialScores[c.name] = 5; });
-        setScores(initialScores);
+        if (!evaluationId) {
+            const initialScores = {};
+            filteredEvaluable.forEach(c => { initialScores[c.name] = 5; });
+            setScores(initialScores);
 
-        const initialNonEvaluableData = {};
-        filteredNonEvaluable.forEach(c => {
-            initialNonEvaluableData[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : '';
-        });
-        setNonEvaluableData(initialNonEvaluableData);
-        setObservations('');
+            const initialNonEvaluableData = {};
+            filteredNonEvaluable.forEach(c => {
+                initialNonEvaluableData[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : '';
+            });
+            setNonEvaluableData(initialNonEvaluableData);
+            setObservations('');
+        }
 
-    }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections]);
+    }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections, evaluationId]);
   
     const handleScoreChange = (criterionName, value) => setScores(prev => ({ ...prev, [criterionName]: Number(value) }));
     const handleNonEvaluableDataChange = (criterionName, value) => setNonEvaluableData(prev => ({ ...prev, [criterionName]: value }));
@@ -108,23 +118,31 @@ const Evaluate = () => {
             scores: scores,
             nonEvaluableData: nonEvaluableData,
             observations: observations,
-            evaluationDate: serverTimestamp(),
             ...(currentSection?.includeManagementDate && { managementDate: new Date(managementDate) })
         };
         
         try {
-            await addDoc(collection(db, 'evaluations'), evaluationData);
+            if (evaluationId) {
+                const docRef = doc(db, 'evaluations', evaluationId);
+                await updateDoc(docRef, evaluationData);
+                setMessage('¡Evaluación actualizada con éxito!');
+            } else {
+                evaluationData.evaluationDate = serverTimestamp();
+                await addDoc(collection(db, 'evaluations'), evaluationData);
+                setMessage('¡Evaluación guardada con éxito!');
+            }
             await refreshData();
-            setMessage('¡Evaluación guardada con éxito!');
             
-            const initialScores = {};
-            Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = 5; });
-            setScores(initialScores);
+            if (!evaluationId) {
+                const initialScores = {};
+                Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = 5; });
+                setScores(initialScores);
 
-            const initialNonEvaluable = {};
-            filteredNonEvaluableCriteria.forEach(c => { initialNonEvaluable[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : ''; });
-            setNonEvaluableData(initialNonEvaluable);
-            setObservations('');
+                const initialNonEvaluable = {};
+                filteredNonEvaluableCriteria.forEach(c => { initialNonEvaluable[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : ''; });
+                setNonEvaluableData(initialNonEvaluable);
+                setObservations('');
+            }
 
         } catch (error) {
             console.error("Error saving evaluation: ", error);
@@ -137,26 +155,23 @@ const Evaluate = () => {
     if (executives.length === 0 || evaluationSections.length === 0) return (<div><h1>Faltan Datos</h1><p>Añade ejecutivos, secciones y criterios en <b>Configuración</b>.</p></div>);
 
     const selectedSection = evaluationSections.find(s => s.name === evaluationType);
+    const formTitle = evaluationId ? 'Editar Evaluación' : 'Registrar Evaluación';
     
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
-            <h4 className="card-title card-title-primary">Registrar Evaluación</h4>
+            <h4 className="card-title card-title-primary">{formTitle}</h4>
             <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+                    <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)} disabled={!!evaluationId}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
                     <div className="form-group">
-                        <label>
-                            <LabelWithTooltip text="Tipo de Evaluación" tooltipText={selectedSection?.description} />
-                        </label>
-                        <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
+                        <label>Tipo de Evaluación</label>
+                        <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                     </div>
                     {selectedSection?.includeManagementDate && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
-                            <label>
-                                <LabelWithTooltip text={c.name} tooltipText={c.description} />
-                            </label>
+                            <label>{c.name}</label>
                             {c.inputType === 'select' ? (
                                 <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
                                 {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -167,6 +182,12 @@ const Evaluate = () => {
                         </div>
                     ))}
                 </div>
+
+                {selectedSection?.displayDescription && selectedSection.description && (
+                    <div className="description-box">
+                        <p>{selectedSection.description}</p>
+                    </div>
+                )}
                 
                 <hr style={{margin: '2rem 0'}} />
                 
@@ -174,11 +195,13 @@ const Evaluate = () => {
                     criteriaList.length > 0 && (
                         <div key={groupName}>
                             {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
+                            {aptitudeSubsections.find(s => s.name === groupName)?.displayDescription && (
+                                <p className="description-text">{aptitudeSubsections.find(s => s.name === groupName).description}</p>
+                            )}
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
-                                    <label>
-                                        <LabelWithTooltip text={`${index + 1}. ${c.name}`} tooltipText={c.description} />
-                                    </label>
+                                    <label>{`${index + 1}. ${c.name}`}</label>
+                                    {c.displayDescription && <p className="description-text">{c.description}</p>}
                                     <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
                                 </div>
                             ))}
@@ -204,7 +227,7 @@ const Evaluate = () => {
                     />
                 </div>
 
-                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : 'Guardar Evaluación'}</button>
+                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : (evaluationId ? 'Actualizar Evaluación' : 'Guardar Evaluación')}</button>
                 {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
             </form>
         </div>
