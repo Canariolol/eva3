@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ColorPicker from './Configuration/ColorPicker';
-import RichTextEditor from './RichTextEditor'; // Importar
+import RichTextEditor from './RichTextEditor';
+import './EditModal.css'; // Importar el CSS
 
 const EditModal = ({ item, onSave, onCancel, fields }) => {
     const [editedItem, setEditedItem] = useState(item);

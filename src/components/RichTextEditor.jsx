@@ -23,11 +23,19 @@ const RichTextEditor = ({ value, onChange }) => {
         'link', 'image', 'align'
     ];
 
+    const handleChange = (content, delta, source, editor) => {
+        if (editor.getText().trim().length === 0) {
+            onChange('');
+        } else {
+            onChange(content);
+        }
+    };
+
     return (
         <ReactQuill 
             theme="snow" 
             value={value} 
-            onChange={onChange}
+            onChange={handleChange}
             modules={modules}
             formats={formats}
         />

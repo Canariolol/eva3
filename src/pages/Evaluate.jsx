@@ -7,6 +7,16 @@ import ScoreSelector from '../components/ScoreSelector';
 import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
 
+// Función para convertir hex a rgba
+const hexToRgba = (hex, alpha = 0.1) => {
+    if (!hex || typeof hex !== 'string') return `rgba(0, 123, 255, ${alpha})`; // Color por defecto
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+
 const Evaluate = () => {
     const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, evaluations, refreshData } = useGlobalContext();
     const [searchParams] = useSearchParams();
@@ -158,6 +168,14 @@ const Evaluate = () => {
     const selectedSection = evaluationSections.find(s => s.name === evaluationType);
     const formTitle = evaluationId ? 'Editar Evaluación' : 'Registrar Evaluación';
     
+    const descriptionStyle = {
+        backgroundColor: hexToRgba(selectedSection?.color, 0.1),
+        borderLeft: `3px solid ${selectedSection?.color || 'var(--color-primary)'}`,
+        padding: '1rem',
+        borderRadius: 'var(--border-radius)',
+        margin: '1rem 0'
+    };
+
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
             <h4 className="card-title card-title-primary">{formTitle}</h4>
@@ -189,7 +207,11 @@ const Evaluate = () => {
                 </div>
                 
                 {selectedSection?.displayDescription && !selectedSection.displayAsTooltip && selectedSection.description && (
-                    <div className="description-box" dangerouslySetInnerHTML={{ __html: selectedSection.description }} />
+                    <div style={descriptionStyle}>
+                        <div className="ql-snow">
+                            <div className="ql-editor" dangerouslySetInnerHTML={{ __html: selectedSection.description }} />
+                        </div>
+                    </div>
                 )}
 
                 <hr style={{margin: '2rem 0'}} />

@@ -25,7 +25,7 @@
 
 /* Add the delay on hover */
 .tooltip-container:hover .tooltip-box {
-  transition-delay: 0.5s;
+  transition-delay: 0.2s;
   opacity: 1;
   visibility: visible;
 }
