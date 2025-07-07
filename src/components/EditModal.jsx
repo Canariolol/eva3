@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ColorPicker from './Configuration/ColorPicker'; // Importar el ColorPicker
+import ColorPicker from './Configuration/ColorPicker';
 
 const EditModal = ({ item, onSave, onCancel, fields }) => {
     const [editedItem, setEditedItem] = useState(item);
@@ -10,14 +10,17 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setEditedItem(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        setEditedItem(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const handleColorChange = (color) => {
         setEditedItem(prev => ({ ...prev, color }));
     };
 
-    const handleSave = (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         onSave(editedItem);
     };
@@ -40,7 +43,7 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
                     </label>
                 );
             case 'color_picker':
-                return <ColorPicker selectedColor={editedItem.color} onChange={handleColorChange} />;
+                return <ColorPicker color={editedItem.color} onChange={handleColorChange} />;
             default:
                 return <input type={field.type || 'text'} name={field.name} value={editedItem[field.name] || ''} onChange={handleChange} className="form-control" />;
         }
@@ -52,7 +55,7 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
             <div className="modal-content">
                 <button onClick={onCancel} className="modal-close-btn">&times;</button>
                 <h2>Editar Elemento</h2>
-                <form onSubmit={handleSave}>
+                <form onSubmit={handleSubmit}>
                     {fields.map(field => (
                         <div className="form-group" key={field.name}>
                             <label>{field.type !== 'checkbox' && field.label}</label>

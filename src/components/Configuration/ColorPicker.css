@@ -1,24 +1,28 @@
-.color-picker-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.color-swatch {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
+.color-swatch-container {
+    padding: 5px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    display: inline-block;
     cursor: pointer;
-    border: 3px solid transparent;
-    transition: transform 0.2s, border-color 0.2s;
 }
 
-.color-swatch:hover {
-    transform: scale(1.1);
+.color-swatch-preview {
+    width: 50px;
+    height: 20px;
+    border-radius: 2px;
+    border: 1px solid #ccc; /* Añadir un borde sutil */
 }
 
-.color-swatch.selected {
-    border-color: #ffffff;
-    box-shadow: 0 0 0 2px var(--color-primary);
+.color-picker-popover {
+    position: absolute;
+    z-index: 2;
+}
+
+.color-picker-cover {
+    position: fixed;
+    top: 0px;
+    right: 0px;
+    bottom: 0px;
+    left: 0px;
 }

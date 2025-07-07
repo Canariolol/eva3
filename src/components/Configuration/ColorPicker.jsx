@@ -1,22 +1,34 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
+import { SketchPicker } from 'react-color';
 import './ColorPicker.css';
 
-const PRESET_COLORS = [
-    '#007bff', '#6610f2', '#6f42c1', '#e83e8c', '#dc3545', 
-    '#fd7e14', '#ffc107', '#28a745', '#20c997', '#17a2b8'
-];
+const ColorPicker = ({ color, onChange }) => {
+    const [displayColorPicker, setDisplayColorPicker] = useState(false);
 
-const ColorPicker = ({ selectedColor, onChange }) => {
+    const handleClick = () => {
+        setDisplayColorPicker(!displayColorPicker);
+    };
+
+    const handleClose = () => {
+        setDisplayColorPicker(false);
+    };
+
+    // Usamos useCallback para que la función no se recree en cada render
+    const handleChange = useCallback((newColor) => {
+        onChange(newColor.hex);
+    }, [onChange]);
+
     return (
-        <div className="color-picker-grid">
-            {PRESET_COLORS.map(color => (
-                <div
-                    key={color}
-                    className={`color-swatch ${selectedColor === color ? 'selected' : ''}`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => onChange(color)}
-                />
-            ))}
+        <div>
+            <div className="color-swatch-container" onClick={handleClick}>
+                <div className="color-swatch-preview" style={{ backgroundColor: color }} />
+            </div>
+            {displayColorPicker ? (
+                <div className="color-picker-popover">
+                    <div className="color-picker-cover" onClick={handleClose} />
+                    <SketchPicker color={color} onChange={handleChange} />
+                </div>
+            ) : null}
         </div>
     );
 };

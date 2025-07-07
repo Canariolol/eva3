@@ -52,7 +52,7 @@ const ManageSections = ({
                                 <div className="form-group">
                                     <label>Color</label>
                                     <ColorPicker
-                                        selectedColor={newSection.color}
+                                        color={newSection.color}
                                         onChange={(color) => setNewSection({ ...newSection, color })}
                                     />
                                 </div>
