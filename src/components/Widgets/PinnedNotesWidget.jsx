@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useGlobalContext } from '../../context/GlobalContext';
 import { db } from '../../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 const PinnedNotesWidget = ({ widget, tabId, userRole, isEditing, onEditingComplete }) => {
     const [notes, setNotes] = useState(widget.notes || '');
 
-    // Si el padre nos dice que ya no estamos editando, salimos del modo de edición
     useEffect(() => {
         if (!isEditing) {
             setNotes(widget.notes || '');
@@ -15,7 +13,7 @@ const PinnedNotesWidget = ({ widget, tabId, userRole, isEditing, onEditingComple
 
     const handleSave = async () => {
         await updateDoc(doc(db, 'customTabs', tabId, 'widgets', widget.id), { notes });
-        onEditingComplete(); // Notificar al padre que hemos terminado
+        onEditingComplete();
     };
 
     return (
@@ -37,7 +35,7 @@ const PinnedNotesWidget = ({ widget, tabId, userRole, isEditing, onEditingComple
             ) : (
                 <div style={{ height: '100%' }}>
                     <p style={{ whiteSpace: 'pre-wrap' }}>
-                        {widget.notes || 'Haz clic en el lápiz para editar...'}
+                        {widget.notes || (userRole === 'admin' ? 'Haz clic en el lápiz para editar...' : 'No hay notas.')}
                     </p>
                 </div>
             )}

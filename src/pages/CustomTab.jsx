@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { useAuth } from '../context/AuthContext';
@@ -64,7 +64,7 @@ const AddWidgetModal = ({ onSelect, onClose }) => {
 // --- PÁGINA PRINCIPAL ---
 const CustomTab = () => {
     const { tabId } = useParams();
-    const { customTabs } = useGlobalContext();
+    const { customTabs, evaluationSections, criteria } = useGlobalContext();
     const { userRole } = useAuth();
     
     const [currentTab, setCurrentTab] = useState(null);
@@ -112,7 +112,6 @@ const CustomTab = () => {
     };
     
     const onLayoutChange = (layout, allLayouts) => {
-        // Actualiza el estado local inmediatamente para que la UI no "salte"
         const updatedWidgets = widgets.map(widget => {
             const layoutItem = layout.find(item => item.i === widget.id);
             return layoutItem ? { ...widget, layout: { ...widget.layout, ...layoutItem } } : widget;
@@ -120,7 +119,6 @@ const CustomTab = () => {
         setWidgets(updatedWidgets);
         setLayouts(allLayouts);
         
-        // Guarda los cambios en la base de datos en segundo plano
         const batch = writeBatch(db);
         layout.forEach(item => {
             const widgetRef = doc(db, 'customTabs', tabId, 'widgets', item.i);
@@ -165,14 +163,24 @@ const CustomTab = () => {
         return components[widget.type] || null;
     };
     
-    const widgetTitles = {
-        pinnedNotes: 'Notas Adheribles',
-        keyMetrics: 'Métricas Clave',
-        recentActivity: 'Actividad Reciente',
-        performanceRanking: 'Ranking de Desempeño',
-        quickChart: 'Gráfico Rápido',
-        needsAttention: 'Necesita Atención',
-    };
+    const getWidgetTitle = useMemo(() => (widget) => {
+        const defaultTitles = {
+            pinnedNotes: 'Notas Adheribles',
+            keyMetrics: 'Métricas Clave',
+            recentActivity: 'Actividad Reciente',
+            performanceRanking: 'Ranking de Desempeño',
+            quickChart: 'Gráfico Rápido',
+            needsAttention: 'Necesita Atención',
+        };
+        
+        if (widget.type === 'needsAttention' && widget.trackingId) {
+            const source = widget.trackingType === 'section' ? evaluationSections : criteria;
+            const item = source.find(i => i.id === widget.trackingId);
+            return item ? `Atención: ${item.name}` : 'Necesita Atención';
+        }
+        
+        return defaultTitles[widget.type] || 'Widget';
+    }, [evaluationSections, criteria]);
 
     const configurableWidgets = ['pinnedNotes', 'keyMetrics', 'performanceRanking', 'quickChart', 'needsAttention'];
 
@@ -220,10 +228,11 @@ const CustomTab = () => {
                 {widgets.map(widget => (
                     <div key={widget.id} data-grid={widget.layout || { x: 0, y: 0, w: 4, h: 5 }}>
                         <WidgetShell
-                            title={widgetTitles[widget.type] || 'Widget'}
+                            title={getWidgetTitle(widget)}
                             userRole={userRole}
                             onDelete={() => handleDeleteWidget(widget.id)}
                             onEdit={configurableWidgets.includes(widget.type) ? () => setEditingWidgetId(widget.id) : null}
+                            isEditable={configurableWidgets.includes(widget.type)}
                         >
                             {renderWidget(widget)}
                         </WidgetShell>

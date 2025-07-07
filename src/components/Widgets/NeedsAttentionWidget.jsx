@@ -76,6 +76,15 @@ const NeedsAttentionWidget = ({ widget, tabId, isEditing, onEditingComplete }) =
         onEditingComplete();
     };
 
+    // Lógica para el título dinámico
+    const title = useMemo(() => {
+        if (!widget.trackingId) return 'Necesita Atención';
+        const source = widget.trackingType === 'section' ? evaluationSections : criteria;
+        const item = source.find(i => i.id === widget.trackingId);
+        return item ? `Atención: ${item.name}` : 'Necesita Atención';
+    }, [widget.trackingId, widget.trackingType, evaluationSections, criteria]);
+
+
     return (
         <div>
             {isEditing ? (
