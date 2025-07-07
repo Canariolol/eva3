@@ -16,7 +16,8 @@ const ManageSections = ({
     const [newSection, setNewSection] = useState({ 
         name: '', 
         description: '', 
-        displayDescription: false, // Nuevo campo
+        displayDescription: false,
+        displayAsTooltip: false, // Nuevo campo
         color: '#007bff', 
         includeManagementDate: false,
         showInDashboard: true
@@ -26,7 +27,7 @@ const ManageSections = ({
         e.preventDefault();
         onSave(newSection);
         setIsAdding(false);
-        setNewSection({ name: '', description: '', displayDescription: false, color: '#007bff', includeManagementDate: false, showInDashboard: true });
+        setNewSection({ name: '', description: '', displayDescription: false, displayAsTooltip: false, color: '#007bff', includeManagementDate: false, showInDashboard: true });
     };
 
     return (
@@ -54,6 +55,12 @@ const ManageSections = ({
                                     <label style={{ display: 'flex', alignItems: 'center' }}>
                                         <input type="checkbox" checked={newSection.displayDescription} onChange={(e) => setNewSection({ ...newSection, displayDescription: e.target.checked })} />
                                         <span style={{ marginLeft: '10px' }}>Desplegar Descripción</span>
+                                    </label>
+                                </div>
+                                <div className="form-group">
+                                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                                        <input type="checkbox" checked={newSection.displayAsTooltip} onChange={(e) => setNewSection({ ...newSection, displayAsTooltip: e.target.checked })} />
+                                        <span style={{ marginLeft: '10px' }}>Mostrar como Tooltip</span>
                                     </label>
                                 </div>
                                 <div className="form-group">
@@ -97,6 +104,7 @@ const ManageSections = ({
                                         { name: 'name', label: 'Nombre de la Sección' },
                                         { name: 'description', label: 'Descripción', type: 'textarea' },
                                         { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
+                                        { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },
                                         { name: 'color', label: 'Color', type: 'color_picker' },
                                         { name: 'includeManagementDate', label: 'Funcionalidad Extra', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' },
                                         { name: 'showInDashboard', label: 'Visibilidad', type: 'checkbox', checkboxLabel: 'Incluir sección en Dashboard' }

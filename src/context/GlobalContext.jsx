@@ -61,8 +61,8 @@ export const GlobalProvider = ({ children }) => {
             if (sectionsSnap.empty) {
                 const batch = writeBatch(db);
                 const defaultSections = [
-                    { id: 'aptitudesTransversales', data: { name: 'Aptitudes Transversales', order: 1, description: 'Habilidades blandas y competencias generales.' }},
-                    { id: 'calidadDesempeno', data: { name: 'Calidad de Desempeño', order: 2, description: 'Rendimiento y calidad del trabajo específico.' }}
+                    { id: 'aptitudesTransversales', data: { name: 'Aptitudes Transversales', order: 1, description: 'Habilidades blandas y competencias generales.', isDefault: true }},
+                    { id: 'calidadDesempeno', data: { name: 'Calidad de Desempeño', order: 2, description: 'Rendimiento y calidad del trabajo específico.', isDefault: true }}
                 ];
                 
                 defaultSections.forEach(section => {
@@ -74,7 +74,11 @@ export const GlobalProvider = ({ children }) => {
                 const newSectionsSnap = await getDocs(query(collection(db, 'evaluationSections'), orderBy('order')));
                 setEvaluationSections(newSectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             } else {
-                setEvaluationSections(sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                 setEvaluationSections(sectionsSnap.docs.map(d => ({ 
+                    id: d.id, 
+                    ...d.data(),
+                    isDefault: d.id === 'aptitudesTransversales' || d.id === 'calidadDesempeno'
+                })));
             }
 
             if (fieldsSnap.empty) {

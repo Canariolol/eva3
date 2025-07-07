@@ -14,7 +14,7 @@ const ManageEvaluableCriteria = ({
     const [newCriterion, setNewCriterion] = useState({ 
         name: '', 
         description: '', 
-        displayDescription: false, 
+        displayAsTooltip: true, // Por defecto es tooltip
         section: evaluationSections[0]?.name || '',
         subsection: ''
     });
@@ -22,7 +22,7 @@ const ManageEvaluableCriteria = ({
     const handleSubmit = (e) => {
         e.preventDefault();
         handleSaveCriterion(newCriterion);
-        setNewCriterion({ name: '', description: '', displayDescription: false, section: evaluationSections[0]?.name || '', subsection: '' });
+        setNewCriterion({ name: '', description: '', displayAsTooltip: true, section: evaluationSections[0]?.name || '', subsection: '' });
     };
 
     const filteredSubsections = aptitudeSubsections.filter(s => s.section === newCriterion.section);
@@ -38,14 +38,8 @@ const ManageEvaluableCriteria = ({
                             <input type="text" className="form-control" value={newCriterion.name} onChange={(e) => setNewCriterion({ ...newCriterion, name: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label>Descripción</label>
+                            <label>Descripción (para Tooltip)</label>
                             <textarea className="form-control" rows="2" value={newCriterion.description} onChange={(e) => setNewCriterion({ ...newCriterion, description: e.target.value })} />
-                        </div>
-                         <div className="form-group">
-                            <label style={{ display: 'flex', alignItems: 'center' }}>
-                                <input type="checkbox" checked={newCriterion.displayDescription} onChange={(e) => setNewCriterion({ ...newCriterion, displayDescription: e.target.checked })} />
-                                <span style={{ marginLeft: '10px' }}>Desplegar Descripción</span>
-                            </label>
                         </div>
                         <div className="form-group">
                             <label>Sección Principal</label>
@@ -77,7 +71,7 @@ const ManageEvaluableCriteria = ({
                             <div className="config-actions">
                                 <button className="btn-icon" onClick={() => handleEditClick(c, 'criteria', [
                                     ...getEvaluableEditFields(c),
-                                    { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' }
+                                    { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' }
                                 ])}>✏️</button>
                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('criteria', c.id)}>🗑️</button>
                             </div>

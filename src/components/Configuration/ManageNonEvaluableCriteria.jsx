@@ -15,6 +15,7 @@ const ManageNonEvaluableCriteria = ({
     const [newCriterion, setNewCriterion] = useState({
         name: '',
         description: '',
+        displayAsTooltip: true,
         section: evaluationSections.length > 0 ? evaluationSections[0].name : '',
         trackInDashboard: false,
         trackEmptyInDashboard: false,
@@ -28,6 +29,7 @@ const ManageNonEvaluableCriteria = ({
         setNewCriterion({
             name: '',
             description: '',
+            displayAsTooltip: true,
             section: newCriterion.section,
             trackInDashboard: false,
             trackEmptyInDashboard: false,
@@ -54,7 +56,7 @@ const ManageNonEvaluableCriteria = ({
                             <input type="text" className="form-control" value={newCriterion.name} onChange={(e) => setNewCriterion({ ...newCriterion, name: e.target.value })}/>
                         </div>
                         <div className="form-group">
-                            <label>Descripción</label>
+                            <label>Descripción (para Tooltip)</label>
                             <textarea className="form-control" rows="2" value={newCriterion.description} onChange={(e) => setNewCriterion({ ...newCriterion, description: e.target.value })} />
                         </div>
                         <div className="form-group">
@@ -102,7 +104,10 @@ const ManageNonEvaluableCriteria = ({
                                     </Tooltip>
                                     {currentUser && (
                                         <div className="config-actions">
-                                            <button className="btn-icon" onClick={() => handleEditClick(item, 'nonEvaluableCriteria', getNonEvaluableEditFields(item))}>✏️</button>
+                                            <button className="btn-icon" onClick={() => handleEditClick(item, 'nonEvaluableCriteria', [
+                                                ...getNonEvaluableEditFields(item),
+                                                { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' }
+                                            ])}>✏️</button>
                                             <button onClick={() => handleDelete('nonEvaluableCriteria', item.id)} className="btn-icon btn-icon-danger">🗑️</button>
                                         </div>
                                     )}

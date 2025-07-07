@@ -4,6 +4,7 @@ import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
 import { addDoc, doc, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
 import ScoreSelector from '../components/ScoreSelector';
+import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
 
 const Evaluate = () => {
@@ -164,14 +165,14 @@ const Evaluate = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)} disabled={!!evaluationId}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
                     <div className="form-group">
-                        <label>Tipo de Evaluación</label>
+                        <LabelWithDescription item={selectedSection} title="Tipo de Evaluación" />
                         <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                     </div>
                     {selectedSection?.includeManagementDate && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
-                            <label>{c.name}</label>
+                            <LabelWithDescription item={c} title={c.name} />
                             {c.inputType === 'select' ? (
                                 <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
                                 {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -182,12 +183,6 @@ const Evaluate = () => {
                         </div>
                     ))}
                 </div>
-
-                {selectedSection?.displayDescription && selectedSection.description && (
-                    <div className="description-box">
-                        <p>{selectedSection.description}</p>
-                    </div>
-                )}
                 
                 <hr style={{margin: '2rem 0'}} />
                 
@@ -200,8 +195,7 @@ const Evaluate = () => {
                             )}
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
-                                    <label>{`${index + 1}. ${c.name}`}</label>
-                                    {c.displayDescription && <p className="description-text">{c.description}</p>}
+                                    <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
                                     <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
                                 </div>
                             ))}

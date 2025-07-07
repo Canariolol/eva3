@@ -1,5 +1,6 @@
 import React from 'react';
 import Tooltip from './Tooltip';
+import './LabelWithDescription.css';
 
 const LabelWithDescription = ({ item, title }) => {
     // Si el item no existe, simplemente mostramos el título.
@@ -7,7 +8,7 @@ const LabelWithDescription = ({ item, title }) => {
         return <span>{title}</span>;
     }
 
-    const showAsTooltip = item.showDescriptionAsTooltip ?? true; // Por defecto es tooltip
+    const showAsTooltip = item.displayAsTooltip ?? false;
 
     return (
         <div className="label-with-description">
@@ -19,7 +20,7 @@ const LabelWithDescription = ({ item, title }) => {
                     </Tooltip>
                 )}
             </div>
-            {!showAsTooltip && item.description && (
+            {!showAsTooltip && item.description && item.displayDescription && (
                 <p className="description-text">{item.description}</p>
             )}
         </div>

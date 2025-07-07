@@ -15,14 +15,14 @@ const ManageSubsections = ({
     const [newSubsection, setNewSubsection] = useState({ 
         name: '', 
         description: '', 
-        displayDescription: false 
+        displayAsTooltip: true,
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (newSubsection.name.trim() && selectedSection) {
             handleSaveSubsection({ ...newSubsection, section: selectedSection });
-            setNewSubsection({ name: '', description: '', displayDescription: false });
+            setNewSubsection({ name: '', description: '', displayAsTooltip: true });
         }
     };
 
@@ -45,14 +45,8 @@ const ManageSubsections = ({
                             <input type="text" className="form-control" value={newSubsection.name} onChange={(e) => setNewSubsection({ ...newSubsection, name: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label>Descripción</label>
+                            <label>Descripción (para Tooltip)</label>
                             <textarea className="form-control" rows="2" value={newSubsection.description} onChange={(e) => setNewSubsection({ ...newSubsection, description: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                            <label style={{ display: 'flex', alignItems: 'center' }}>
-                                <input type="checkbox" checked={newSubsection.displayDescription} onChange={(e) => setNewSubsection({ ...newSubsection, displayDescription: e.target.checked })} />
-                                <span style={{ marginLeft: '10px' }}>Desplegar Descripción</span>
-                            </label>
                         </div>
                         <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Guardar Subsección</button>
                     </form>
@@ -68,7 +62,7 @@ const ManageSubsections = ({
                                  <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [
                                      { name: 'name', label: 'Nombre' },
                                      { name: 'description', label: 'Descripción', type: 'textarea' },
-                                     { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
+                                     { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },
                                      { name: 'section', label: 'Sección Principal', type: 'select', options: evaluationSections.map(s => ({value: s.name, label: s.name})) }
                                  ])}>✏️</button>
                                  <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, selectedSection, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
