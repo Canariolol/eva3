@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Tooltip from '../Tooltip';
 import CollapsibleCard from '../CollapsibleCard';
+import ColorPicker from './ColorPicker';
+import './ColorPicker.css';
 
 const ManageSections = ({ 
     evaluationSections, 
@@ -14,17 +16,16 @@ const ManageSections = ({
     const [newSection, setNewSection] = useState({ 
         name: '', 
         description: '', 
-        color: '#A7C7E7', 
+        color: '#007bff', 
         includeManagementDate: false,
-        showInDashboard: true // <-- Nuevo campo, por defecto en true
+        showInDashboard: true
     });
 
     const handleSave = (e) => {
         e.preventDefault();
         onSave(newSection);
         setIsAdding(false);
-        const nextColor = ['#A7C7E7', '#C1E1C1', '#FDFD96', '#FFB347', '#FF6961', '#D1C4E9', '#B2DFDB'][evaluationSections.length % 7];
-        setNewSection({ name: '', description: '', color: nextColor, includeManagementDate: false, showInDashboard: true });
+        setNewSection({ name: '', description: '', color: '#007bff', includeManagementDate: false, showInDashboard: true });
     };
 
     return (
@@ -50,19 +51,20 @@ const ManageSections = ({
                                 </div>
                                 <div className="form-group">
                                     <label>Color</label>
-                                    <input type="color" className="form-control" value={newSection.color} onChange={(e) => setNewSection({ ...newSection, color: e.target.value })} />
+                                    <ColorPicker
+                                        selectedColor={newSection.color}
+                                        onChange={(color) => setNewSection({ ...newSection, color })}
+                                    />
                                 </div>
                                 <div className="form-group">
                                     <label style={{ display: 'flex', alignItems: 'center', marginTop: '1rem' }}>
                                         <input type="checkbox" checked={newSection.includeManagementDate} onChange={(e) => setNewSection({ ...newSection, includeManagementDate: e.target.checked })} style={{ marginRight: '10px' }}/>
                                         Incluir "Fecha de Gestión"
                                     </label>
-                                    {/* --- INICIO DE LÍNEAS NUEVAS --- */}
                                     <label style={{ display: 'flex', alignItems: 'center', marginTop: '1rem' }}>
                                         <input type="checkbox" checked={newSection.showInDashboard} onChange={(e) => setNewSection({ ...newSection, showInDashboard: e.target.checked })} style={{ marginRight: '10px' }}/>
                                         Incluir sección en Dashboard
                                     </label>
-                                    {/* --- FIN DE LÍNEAS NUEVAS --- */}
                                 </div>
                                 <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Guardar Sección</button>
                             </form>
@@ -78,9 +80,7 @@ const ManageSections = ({
                                     <span>{section.name}</span>
                                 </Tooltip>
                                 {section.includeManagementDate && <span className="badge">Fecha Gestión</span>}
-                                {/* --- INICIO DE LÍNEA NUEVA --- */}
                                 {section.showInDashboard && <span className="badge" style={{backgroundColor: '#C1E1C1'}}>En Dashboard</span>}
-                                {/* --- FIN DE LÍNEA NUEVA --- */}
                             </div>
                             {currentUser && (
                                 <div className="config-actions">
@@ -89,11 +89,9 @@ const ManageSections = ({
                                     <button className="btn-icon" onClick={() => onEdit(section, 'evaluationSections', [
                                         { name: 'name', label: 'Nombre de la Sección' },
                                         { name: 'description', label: 'Descripción', type: 'textarea' },
-                                        { name: 'color', label: 'Color', type: 'color' },
+                                        { name: 'color', label: 'Color', type: 'color_picker' },
                                         { name: 'includeManagementDate', label: 'Funcionalidad Extra', type: 'checkbox', checkboxLabel: 'Incluir "Fecha de Gestión"' },
-                                        // --- INICIO DE LÍNEA NUEVA ---
                                         { name: 'showInDashboard', label: 'Visibilidad', type: 'checkbox', checkboxLabel: 'Incluir sección en Dashboard' }
-                                        // --- FIN DE LÍNEA NUEVA ---
                                     ])}>✏️</button>
                                     {!section.isDefault && <button className="btn-icon btn-icon-danger" onClick={() => onDelete('evaluationSections', section.id)}>🗑️</button>}
                                 </div>
