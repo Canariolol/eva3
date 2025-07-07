@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Tooltip from '../Tooltip';
 import CollapsibleCard from '../CollapsibleCard';
 import ColorPicker from './ColorPicker';
+import RichTextEditor from '../RichTextEditor'; // Importar
 import './ColorPicker.css';
 
 const ManageSections = ({ 
@@ -17,7 +18,7 @@ const ManageSections = ({
         name: '', 
         description: '', 
         displayDescription: false,
-        displayAsTooltip: false, // Nuevo campo
+        displayAsTooltip: false,
         color: '#007bff', 
         includeManagementDate: false,
         showInDashboard: true
@@ -49,7 +50,7 @@ const ManageSections = ({
                                 </div>
                                 <div className="form-group">
                                     <label>Descripción</label>
-                                    <textarea className="form-control" rows="3" value={newSection.description} onChange={(e) => setNewSection({ ...newSection, description: e.target.value })} />
+                                    <RichTextEditor value={newSection.description} onChange={(value) => setNewSection({ ...newSection, description: value })} />
                                 </div>
                                 <div className="form-group">
                                     <label style={{ display: 'flex', alignItems: 'center' }}>
@@ -102,7 +103,7 @@ const ManageSections = ({
                                     <button className="btn-icon" onClick={() => onMove(section.id, 'down')} disabled={index === evaluationSections.length - 1} title="Mover hacia abajo">↓</button>
                                     <button className="btn-icon" onClick={() => onEdit(section, 'evaluationSections', [
                                         { name: 'name', label: 'Nombre de la Sección' },
-                                        { name: 'description', label: 'Descripción', type: 'textarea' },
+                                        { name: 'description', label: 'Descripción', type: 'richtext' },
                                         { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
                                         { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },
                                         { name: 'color', label: 'Color', type: 'color_picker' },

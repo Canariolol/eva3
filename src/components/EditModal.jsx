@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ColorPicker from './Configuration/ColorPicker';
+import RichTextEditor from './RichTextEditor'; // Importar
 
 const EditModal = ({ item, onSave, onCancel, fields }) => {
     const [editedItem, setEditedItem] = useState(item);
@@ -16,6 +17,10 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
         }));
     };
 
+    const handleRichTextChange = (value, name) => {
+        setEditedItem(prev => ({ ...prev, [name]: value }));
+    };
+
     const handleColorChange = (color) => {
         setEditedItem(prev => ({ ...prev, color }));
     };
@@ -29,6 +34,8 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
         switch (field.type) {
             case 'textarea':
                 return <textarea name={field.name} value={editedItem[field.name] || ''} onChange={handleChange} className="form-control" rows="3" />;
+            case 'richtext':
+                return <RichTextEditor value={editedItem[field.name] || ''} onChange={(value) => handleRichTextChange(value, field.name)} />;
             case 'select':
                 return (
                     <select name={field.name} value={editedItem[field.name] || ''} onChange={handleChange} className="form-control">

@@ -165,7 +165,11 @@ const Evaluate = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)} disabled={!!evaluationId}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
                     <div className="form-group">
-                        <LabelWithDescription item={selectedSection} title="Tipo de Evaluación" />
+                        {selectedSection?.displayAsTooltip ? (
+                            <LabelWithDescription item={selectedSection} title="Tipo de Evaluación" />
+                        ) : (
+                            <label>Tipo de Evaluación</label>
+                        )}
                         <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                     </div>
                     {selectedSection?.includeManagementDate && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
@@ -184,15 +188,17 @@ const Evaluate = () => {
                     ))}
                 </div>
                 
+                {selectedSection?.displayDescription && !selectedSection.displayAsTooltip && selectedSection.description && (
+                    <div className="description-box" dangerouslySetInnerHTML={{ __html: selectedSection.description }} />
+                )}
+
                 <hr style={{margin: '2rem 0'}} />
                 
                 {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
                     criteriaList.length > 0 && (
                         <div key={groupName}>
                             {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
-                            {aptitudeSubsections.find(s => s.name === groupName)?.displayDescription && (
-                                <p className="description-text">{aptitudeSubsections.find(s => s.name === groupName).description}</p>
-                            )}
+                            <LabelWithDescription item={aptitudeSubsections.find(s => s.name === groupName)} title={groupName} />
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
                                     <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
