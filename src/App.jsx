@@ -4,6 +4,7 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import { FiGrid, FiUsers, FiEdit, FiSettings, FiChevronsLeft, FiChevronsRight } from 'react-icons/fi'; // Importar íconos
 
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
@@ -24,9 +25,14 @@ const AppLayout = () => {
     const location = useLocation();
     const projectId = db.app.options.projectId;
     const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setSidebarCollapsed] = useState(false); // Estado para colapsar
 
     const toggleSidebar = () => {
         setSidebarOpen(!isSidebarOpen);
+    };
+    
+    const toggleSidebarCollapse = () => {
+        setSidebarCollapsed(!isSidebarCollapsed);
     };
 
     if (globalLoading || authLoading) {
@@ -38,7 +44,7 @@ const AppLayout = () => {
     }
 
     return (
-        <div className="app-layout">
+        <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             {import.meta.env.DEV && (
                 <div style={{ position: 'fixed', top: '10px', right: '20px', backgroundColor: '#ffc107', color: 'black', padding: '5px 10px', borderRadius: '5px', fontSize: '14px', zIndex: 9999 }}>
                     Conectado a: <strong>{projectId}</strong>
@@ -53,21 +59,22 @@ const AppLayout = () => {
                     <span>Evaluaciones, Calidad y Monitoreo</span>
                 </div>
                 <ul className="nav-list">
-                    {/* Public links */}
-                    <li><NavLink to="/" end>Dashboard</NavLink></li>
-                    <li><NavLink to="/team">Equipo</NavLink></li>
+                    <li><NavLink to="/" end><FiGrid /><span>Dashboard</span></NavLink></li>
+                    <li><NavLink to="/team"><FiUsers /><span>Equipo</span></NavLink></li>
                     
-                    {/* Protected links */}
                     {customTabs.map(tab => (
-                        <li key={tab.id}><NavLink to={`/tabs/${tab.id}`}>{tab.name}</NavLink></li>
+                        <li key={tab.id}><NavLink to={`/tabs/${tab.id}`}><FiEdit /><span>{tab.name}</span></NavLink></li>
                     ))}
                     {userRole === 'admin' && (
                         <>
-                            <li><NavLink to="/evaluate">Evaluar</NavLink></li>
-                            <li><NavLink to="/configuration">Configuración</NavLink></li>
+                            <li><NavLink to="/evaluate"><FiEdit /><span>Evaluar</span></NavLink></li>
+                            <li><NavLink to="/configuration"><FiSettings /><span>Configuración</span></NavLink></li>
                         </>
                     )}
                 </ul>
+                <button onClick={toggleSidebarCollapse} className="sidebar-collapse-toggle">
+                    {isSidebarCollapsed ? <FiChevronsRight /> : <FiChevronsLeft />}
+                </button>
             </nav>
             <div className="main-panel">
                 <Header />

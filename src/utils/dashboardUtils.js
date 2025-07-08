@@ -1,3 +1,35 @@
+// src/utils/dashboardUtils.js
+
+/**
+ * Normaliza un puntaje a una escala de 0 a 100 según el tipo de escala.
+ * @param {number} score El puntaje original.
+ * @param {string} scaleType El tipo de escala ('1-10', '1-5', 'binary', 'percentage').
+ * @returns {number} El puntaje normalizado a 100.
+ */
+export const normalizeScore = (score, scaleType) => {
+    if (score === undefined || score === null) return 0;
+
+    switch (scaleType) {
+        case '1-10':
+            // Convierte de 1-10 a 0-100
+            // (1 -> 0, 10 -> 100)
+            return ((score - 1) / 9) * 100;
+        case '1-5':
+            // Convierte de 1-5 a 0-100
+            // (1 -> 0, 5 -> 100)
+            return ((score - 1) / 4) * 100;
+        case 'binary':
+            // 10 (Cumple) -> 100, 0 (No Cumple) -> 0
+            return score === 10 ? 100 : 0;
+        case 'percentage':
+            // Ya está en una escala de 0-100
+            return score;
+        default:
+            // Por defecto, asumimos 1-10 si no se especifica
+            return ((score - 1) / 9) * 100;
+    }
+};
+
 const truncateName = (name) => {
     if (typeof name !== 'string') return '';
     const words = name.split(' ');

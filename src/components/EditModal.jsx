@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ColorPicker from './Configuration/ColorPicker';
 import RichTextEditor from './RichTextEditor';
-import './EditModal.css'; // Importar el CSS
+import './EditModal.css';
 
 const EditModal = ({ item, onSave, onCancel, fields }) => {
     const [editedItem, setEditedItem] = useState(item);
@@ -12,6 +12,23 @@ const EditModal = ({ item, onSave, onCancel, fields }) => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
+        
+        // Lógica de la alerta para el cambio de scaleType
+        if (name === 'scaleType') {
+            const originalScaleType = item.scaleType;
+            if (originalScaleType && value !== originalScaleType) {
+                const userConfirmed = window.confirm(
+                    "No es recomendable cambiar la escala de una sección que ya contiene datos. " +
+                    "Si necesitas implementar una evaluación con una escala nueva, se aconseja añadir y configurar una nueva sección. " +
+                    "¿Estás seguro de que deseas continuar?"
+                );
+                if (!userConfirmed) {
+                    // Si el usuario cancela, no hacemos nada y el valor no cambia
+                    return; 
+                }
+            }
+        }
+
         setEditedItem(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value

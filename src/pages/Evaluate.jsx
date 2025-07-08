@@ -121,6 +121,7 @@ const Evaluate = () => {
         let evaluationData = {
             executive: selectedExecutive,
             section: evaluationType,
+            scaleType: currentSection?.scaleType || '1-10', // Guardar la escala
             scores: scores,
             nonEvaluableData: nonEvaluableData,
             observations: observations,

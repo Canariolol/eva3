@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import TooltipComponent from '../Tooltip';
 import CustomTooltip from './CustomTooltip';
 import ExecutiveSummaryCard from './ExecutiveSummaryCard';
 import AdditionalMetricsCard from './AdditionalMetricsCard';
@@ -8,14 +7,40 @@ import {
     processDataForLineChart, 
     processDataForBarChart, 
     processNonEvaluableData, 
-    processExecutiveAverages 
+    processExecutiveAverages,
+    normalizeScore
 } from '../../utils/dashboardUtils';
+
+const getScaleDomain = (scaleType) => {
+    switch (scaleType) {
+        case '1-5': return [0, 5];
+        case 'binary': return [0, 10];
+        case 'percentage': return [0, 100];
+        default: return [0, 10];
+    }
+};
 
 const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCriteria, executives, executiveColorMap, onEvaluationSelect, userRole }) => {
     const [chartState, setChartState] = useState({ view: 'bySubsection', selectedItem: null });
 
     const sectionEvaluations = useMemo(() => evaluations.filter(e => e.section === section.name), [evaluations, section.name]);
     const hasSubsections = useMemo(() => criteriaConfig.some(c => c.section === section.name && c.subsection), [criteriaConfig, section.name]);
+    
+    const uniqueScales = useMemo(() => new Set(sectionEvaluations.map(e => e.scaleType || '1-10')), [sectionEvaluations]);
+    const mustNormalize = uniqueScales.size > 1;
+    
+    const processedEvaluations = useMemo(() => {
+        if (!mustNormalize) return sectionEvaluations;
+        return sectionEvaluations.map(ev => ({
+            ...ev,
+            scores: Object.entries(ev.scores).reduce((acc, [criterion, score]) => {
+                acc[criterion] = normalizeScore(score, ev.scaleType || '1-10');
+                return acc;
+            }, {})
+        }));
+    }, [sectionEvaluations, mustNormalize]);
+
+    const chartDomain = mustNormalize ? [0, 100] : getScaleDomain(uniqueScales.values().next().value);
 
     const handleChartClick = (data) => {
         if (!hasSubsections || !data || !data.activePayload || !data.activePayload.length) return;
@@ -46,10 +71,10 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
     };
 
     const dateField = section.name === 'Calidad de Desempeño' ? 'managementDate' : 'evaluationDate';
-    const lineData = useMemo(() => processDataForLineChart(sectionEvaluations.filter(e => e[dateField]), dateField), [sectionEvaluations, dateField]);
-    const barData = useMemo(() => processDataForBarChart(sectionEvaluations, section.name, criteriaConfig, chartState), [sectionEvaluations, section.name, criteriaConfig, chartState]);
+    const lineData = useMemo(() => processDataForLineChart(processedEvaluations.filter(e => e[dateField]), dateField), [processedEvaluations, dateField]);
+    const barData = useMemo(() => processDataForBarChart(processedEvaluations, section.name, criteriaConfig, chartState), [processedEvaluations, section.name, criteriaConfig, chartState]);
     const nonEvaluable = useMemo(() => processNonEvaluableData(sectionEvaluations, nonEvaluableCriteria, section.name, executives), [sectionEvaluations, nonEvaluableCriteria, section.name, executives]);
-    const executiveAverages = useMemo(() => processExecutiveAverages(sectionEvaluations), [sectionEvaluations]);
+    const executiveAverages = useMemo(() => processExecutiveAverages(processedEvaluations), [processedEvaluations]);
     const overallAverage = useMemo(() => executiveAverages.reduce((sum, exec) => sum + exec.average, 0) / (executiveAverages.length || 1), [executiveAverages]);
 
     if (sectionEvaluations.length === 0) return null;
@@ -61,12 +86,16 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
         <section className="dashboard-section">
             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
                 <h2>{section.name}</h2>
-                <TooltipComponent text={section.description || 'Sin descripción'} />
             </div>
+             {mustNormalize && (
+                <p className="normalization-notice">
+                    Los datos han sido normalizados a una escala de 0-100 para su correcta presentación.
+                </p>
+            )}
             <div className="dashboard-grid">
                 <div className="card">
                     <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>Progreso Comparativo</h4>
-                    <ResponsiveContainer width="100%" height={300}><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={[0, 10]} /><Tooltip /><Legend />{executivesInLineChart.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name] || '#ccc'} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={300}><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis domain={chartDomain} /><Tooltip /><Legend />{executivesInLineChart.map(name => (<Line connectNulls={true} key={name} type="monotone" dataKey={name} stroke={executiveColorMap[name] || '#ccc'} activeDot={{ r: 8 }} />))}</LineChart></ResponsiveContainer>
                 </div>
                 <div className="card">
                     <h4 className="card-title" style={{backgroundColor: section.color + '20', color: section.color}}>
@@ -76,7 +105,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={barData} onClick={handleChartClick} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={[0, 10]} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="Puntaje Promedio" fill={section.color} />
+                            <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={chartDomain} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="Puntaje Promedio" fill={section.color} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
