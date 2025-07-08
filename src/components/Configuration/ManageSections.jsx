@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Tooltip from '../Tooltip';
 import CollapsibleCard from '../CollapsibleCard';
 import ColorPicker from './ColorPicker';
-import RichTextEditor from '../RichTextEditor'; // Importar
+import RichTextEditor from '../RichTextEditor';
 import './ColorPicker.css';
 
 const ManageSections = ({ 
@@ -21,14 +21,15 @@ const ManageSections = ({
         displayAsTooltip: false,
         color: '#007bff', 
         includeManagementDate: false,
-        showInDashboard: true
+        showInDashboard: true,
+        scaleType: '1-10' // Nuevo campo
     });
 
     const handleSave = (e) => {
         e.preventDefault();
         onSave(newSection);
         setIsAdding(false);
-        setNewSection({ name: '', description: '', displayDescription: false, displayAsTooltip: false, color: '#007bff', includeManagementDate: false, showInDashboard: true });
+        setNewSection({ name: '', description: '', displayDescription: false, displayAsTooltip: false, color: '#007bff', includeManagementDate: false, showInDashboard: true, scaleType: '1-10' });
     };
 
     return (
@@ -47,6 +48,15 @@ const ManageSections = ({
                                 <div className="form-group">
                                     <label>Nombre de la Sección</label>
                                     <input type="text" className="form-control" value={newSection.name} onChange={(e) => setNewSection({ ...newSection, name: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Tipo de Escala</label>
+                                    <select className="form-control" value={newSection.scaleType} onChange={(e) => setNewSection({ ...newSection, scaleType: e.target.value })}>
+                                        <option value="1-10">1 a 10</option>
+                                        <option value="binary">Cumple / No Cumple</option>
+                                        <option value="1-5">1 a 5</option>
+                                        <option value="percentage">Porcentajes (0-100)</option>
+                                    </select>
                                 </div>
                                 <div className="form-group">
                                     <label>Descripción</label>
@@ -103,6 +113,12 @@ const ManageSections = ({
                                     <button className="btn-icon" onClick={() => onMove(section.id, 'down')} disabled={index === evaluationSections.length - 1} title="Mover hacia abajo">↓</button>
                                     <button className="btn-icon" onClick={() => onEdit(section, 'evaluationSections', [
                                         { name: 'name', label: 'Nombre de la Sección' },
+                                        { name: 'scaleType', label: 'Tipo de Escala', type: 'select', options: [
+                                            { value: '1-10', label: '1 a 10' },
+                                            { value: 'binary', label: 'Cumple / No Cumple' },
+                                            { value: '1-5', label: '1 a 5' },
+                                            { value: 'percentage', label: 'Porcentajes (0-100)' }
+                                        ]},
                                         { name: 'description', label: 'Descripción', type: 'richtext' },
                                         { name: 'displayDescription', label: 'Visibilidad de la Descripción', type: 'checkbox', checkboxLabel: 'Desplegar Descripción' },
                                         { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },

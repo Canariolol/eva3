@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
 import { addDoc, doc, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
-import ScoreSelector from '../components/ScoreSelector';
+import DynamicScoreSelector from '../components/DynamicScoreSelector'; // Importar
 import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
 
@@ -87,7 +87,9 @@ const Evaluate = () => {
         
         if (!evaluationId) {
             const initialScores = {};
-            filteredEvaluable.forEach(c => { initialScores[c.name] = 5; });
+            const selectedSection = evaluationSections.find(s => s.name === evaluationType);
+            const defaultScore = selectedSection?.scaleType === 'binary' ? 10 : (selectedSection?.scaleType === 'percentage' ? 100 : 5);
+            filteredEvaluable.forEach(c => { initialScores[c.name] = defaultScore; });
             setScores(initialScores);
 
             const initialNonEvaluableData = {};
@@ -98,7 +100,7 @@ const Evaluate = () => {
             setObservations('');
         }
 
-    }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections, evaluationId]);
+    }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections, evaluationId, evaluationSections]);
   
     const handleScoreChange = (criterionName, value) => setScores(prev => ({ ...prev, [criterionName]: Number(value) }));
     const handleNonEvaluableDataChange = (criterionName, value) => setNonEvaluableData(prev => ({ ...prev, [criterionName]: value }));
@@ -111,13 +113,6 @@ const Evaluate = () => {
 
         if (!selectedExecutive) {
             setMessage('Por favor, selecciona un ejecutivo.');
-            setIsSubmitting(false);
-            return;
-        }
-        
-        const allScoresValid = Object.values(scores).every(s => s >= 1 && s <= 10);
-        if (Object.keys(scores).length > 0 && !allScoresValid) {
-            setMessage('Por favor, asegúrate de que todos los puntajes estén entre 1 y 10.');
             setIsSubmitting(false);
             return;
         }
@@ -146,7 +141,8 @@ const Evaluate = () => {
             
             if (!evaluationId) {
                 const initialScores = {};
-                Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = 5; });
+                const defaultScore = currentSection?.scaleType === 'binary' ? 10 : (currentSection?.scaleType === 'percentage' ? 100 : 5);
+                Object.values(groupedCriteria).flat().forEach(c => { initialScores[c.name] = defaultScore; });
                 setScores(initialScores);
 
                 const initialNonEvaluable = {};
@@ -224,7 +220,11 @@ const Evaluate = () => {
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
                                     <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
-                                    <ScoreSelector value={scores[c.name] || 5} onChange={(score) => handleScoreChange(c.name, score)} />
+                                    <DynamicScoreSelector 
+                                        scaleType={selectedSection?.scaleType}
+                                        value={scores[c.name]} 
+                                        onChange={(score) => handleScoreChange(c.name, score)} 
+                                    />
                                 </div>
                             ))}
                             {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
