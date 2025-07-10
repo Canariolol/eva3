@@ -26,7 +26,14 @@ const ManageSubsections = ({
         }
     };
 
-    const filteredSubsections = aptitudeSubsections.filter(sub => sub.section === selectedSection);
+    const groupedSubsections = aptitudeSubsections.reduce((acc, sub) => {
+        const sectionName = sub.section || 'Sin Asignar';
+        if (!acc[sectionName]) {
+            acc[sectionName] = [];
+        }
+        acc[sectionName].push(sub);
+        return acc;
+    }, {});
 
     return (
         <div className="card">
@@ -51,28 +58,33 @@ const ManageSubsections = ({
                         <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Guardar Subsección</button>
                     </form>
                 )}
-                <ul className="config-list">
-                    {filteredSubsections.map((sub, index) => (
-                         <li key={sub.id} className="config-list-item">
-                             <Tooltip text={sub.description || 'Sin descripción'}>
-                                 <span>{sub.name}</span>
-                             </Tooltip>
-                             {currentUser && (
-                             <div className="config-actions">
-                                 <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [
-                                     { name: 'name', label: 'Nombre' },
-                                     { name: 'description', label: 'Descripción', type: 'textarea' },
-                                     { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },
-                                     { name: 'section', label: 'Sección Principal', type: 'select', options: evaluationSections.map(s => ({value: s.name, label: s.name})) }
-                                 ])}>✏️</button>
-                                 <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, selectedSection, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
-                                 <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, selectedSection, 'down')} disabled={index === filteredSubsections.length - 1} title="Mover hacia abajo">↓</button>
-                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('aptitudeSubsections', sub.id)}>🗑️</button>
-                             </div>
-                             )}
-                         </li>
-                    ))}
-                </ul>
+                {Object.entries(groupedSubsections).map(([sectionName, subsections]) => (
+                    <div key={sectionName}>
+                        <h5 className="config-list-subheader">{sectionName}</h5>
+                        <ul className="config-list">
+                            {subsections.map((sub, index) => (
+                                <li key={sub.id} className="config-list-item">
+                                    <Tooltip text={sub.description || 'Sin descripción'}>
+                                        <span>{sub.name}</span>
+                                    </Tooltip>
+                                    {currentUser && (
+                                    <div className="config-actions">
+                                        <button className="btn-icon" onClick={() => handleEditClick(sub, 'aptitudeSubsections', [
+                                            { name: 'name', label: 'Nombre' },
+                                            { name: 'description', label: 'Descripción', type: 'textarea' },
+                                            { name: 'displayAsTooltip', label: 'Mostrar como Tooltip', type: 'checkbox', checkboxLabel: 'Mostrar como Tooltip' },
+                                            { name: 'section', label: 'Sección Principal', type: 'select', options: evaluationSections.map(s => ({value: s.name, label: s.name})) }
+                                        ])}>✏️</button>
+                                        <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, sectionName, 'up')} disabled={index === 0} title="Mover hacia arriba">↑</button>
+                                        <button className="btn-icon" onClick={() => handleMoveSubsection(sub.id, sectionName, 'down')} disabled={index === subsections.length - 1} title="Mover hacia abajo">↓</button>
+                                        <button className="btn-icon btn-icon-danger" onClick={() => handleDelete('aptitudeSubsections', sub.id)}>🗑️</button>
+                                    </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
             </CollapsibleCard>
         </div>
     );
