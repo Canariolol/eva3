@@ -12,33 +12,36 @@ import ManageSubsections from '../components/Configuration/ManageSubsections';
 import ManageEvaluableCriteria from '../components/Configuration/ManageEvaluableCriteria';
 import ManageNonEvaluableCriteria from '../components/Configuration/ManageNonEvaluableCriteria';
 import ManageExecutiveFields from '../components/Configuration/ManageExecutiveFields';
-import ManageCustomTabs from '../components/Configuration/ManageCustomTabs'; // Importar el nuevo componente
+import ManageCustomTabs from '../components/Configuration/ManageCustomTabs';
 import CollapsibleCard from '../components/CollapsibleCard';
 
 const Configuration = () => {
-    // Toda la lógica y el estado se quedan en el componente padre
+    // ... (Estado y otras funciones sin cambios)
     const { 
         executives, 
         criteria, 
         nonEvaluableCriteria, 
-        aptitudeSubsections, 
+        aptitudeSubsections: initialAptitudeSubsections, 
         executiveFields, 
         evaluationSections,
-        customTabs, // Añadir customTabs del contexto
+        customTabs,
         headerInfo,
         headerInfoId,
         refreshData,
         setHeaderInfo,
     } = useGlobalContext();
     const { currentUser } = useAuth();
-
+    
+    const [aptitudeSubsections, setAptitudeSubsections] = useState(initialAptitudeSubsections);
     const [error, setError] = useState('');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState(null);
     const [editConfig, setEditConfig] = useState({ collection: '', fields: [] });
-
-    // --- Todas las funciones de manejo de datos ---
     
+    useEffect(() => {
+        setAptitudeSubsections(initialAptitudeSubsections);
+    }, [initialAptitudeSubsections]);
+
     const handleEditClick = (item, collection, fields) => {
         setItemToEdit(item);
         setEditConfig({ collection, fields });
@@ -159,26 +162,36 @@ const Configuration = () => {
     };
 
     const handleMoveSubsection = async (subsectionId, sectionName, direction) => {
-        const subsOfSection = aptitudeSubsections
+        const allSubs = [...aptitudeSubsections];
+        const subsOfSection = allSubs
             .filter(s => s.section === sectionName)
             .sort((a, b) => a.order - b.order);
 
         const index = subsOfSection.findIndex(s => s.id === subsectionId);
         if (index === -1) return;
-    
+
         const swapIndex = direction === 'up' ? index - 1 : index + 1;
-    
         if (swapIndex < 0 || swapIndex >= subsOfSection.length) return;
-    
+
+        // Swap orders
         const sub1 = subsOfSection[index];
         const sub2 = subsOfSection[swapIndex];
-    
+        [sub1.order, sub2.order] = [sub2.order, sub1.order];
+        
+        // Update local state for instant UI update
+        const updatedAllSubs = allSubs.map(s => {
+            if (s.id === sub1.id) return sub1;
+            if (s.id === sub2.id) return sub2;
+            return s;
+        });
+        setAptitudeSubsections(updatedAllSubs);
+        
+        // Update in backend
         const batch = writeBatch(db);
-        batch.update(doc(db, 'aptitudeSubsections', sub1.id), { order: sub2.order });
-        batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub1.order });
-    
+        batch.update(doc(db, 'aptitudeSubsections', sub1.id), { order: sub1.order });
+        batch.update(doc(db, 'aptitudeSubsections', sub2.id), { order: sub2.order });
         await batch.commit();
-        await refreshData();
+        // Optional: you can call refreshData() here if you want to be sure, but it might not be necessary
     };
 
 
@@ -278,14 +291,6 @@ const Configuration = () => {
                     handleEditClick={handleEditClick}
                     handleDelete={handleDelete}
                 />
-
-                {/* <ManageCustomTabs
-                customTabs={customTabs}
-                currentUser={currentUser}
-                onSave={handleSaveCustomTab}
-                onDelete={(tabId) => handleDelete('customTabs', tabId)}
-                onEdit={(tab) => handleEditClick(tab, 'customTabs', [{ name: 'name', label: 'Nombre de la Pestaña' }])}
-                /> */}
                 
                 <div className="card">
                     <h4 className="card-title card-title-primary">Información de la Organización</h4>

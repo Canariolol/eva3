@@ -35,6 +35,11 @@ const ManageSubsections = ({
         return acc;
     }, {});
 
+    // Ordenar las subsecciones dentro de cada grupo
+    for (const sectionName in groupedSubsections) {
+        groupedSubsections[sectionName].sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
     return (
         <div className="card">
             <h4 className="card-title card-title-primary">Gestionar Subsecciones</h4>

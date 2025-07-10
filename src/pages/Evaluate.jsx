@@ -3,24 +3,24 @@ import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { db } from '../firebase';
 import { addDoc, doc, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
-import DynamicScoreSelector from '../components/DynamicScoreSelector'; // Importar
+import DynamicScoreSelector from '../components/DynamicScoreSelector'; 
 import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
 
 // Función para convertir hex a rgba
 const hexToRgba = (hex, alpha = 0.1) => {
-    if (!hex || typeof hex !== 'string') return `rgba(0, 123, 255, ${alpha})`; // Color por defecto
+    if (!hex || typeof hex !== 'string') return `rgba(0, 123, 255, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-
 const Evaluate = () => {
     const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, evaluations, refreshData } = useGlobalContext();
     const [searchParams] = useSearchParams();
     
+    // ... (estados sin cambios)
     const [evaluationId, setEvaluationId] = useState(null);
     const [evaluationType, setEvaluationType] = useState('');
     const [groupedCriteria, setGroupedCriteria] = useState({});
@@ -121,7 +121,7 @@ const Evaluate = () => {
         let evaluationData = {
             executive: selectedExecutive,
             section: evaluationType,
-            scaleType: currentSection?.scaleType || '1-10', // Guardar la escala
+            scaleType: currentSection?.scaleType || '1-10',
             scores: scores,
             nonEvaluableData: nonEvaluableData,
             observations: observations,
@@ -216,8 +216,12 @@ const Evaluate = () => {
                 {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
                     criteriaList.length > 0 && (
                         <div key={groupName}>
-                            {evaluationType === 'Aptitudes Transversales' && <h4>{groupName}</h4>}
-                            <LabelWithDescription item={aptitudeSubsections.find(s => s.name === groupName)} title={groupName} />
+                            {evaluationType === 'Aptitudes Transversales' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                                    <h4>{groupName}</h4>
+                                    <LabelWithDescription item={aptitudeSubsections.find(s => s.name === groupName)} title="" />
+                                </div>
+                            )}
                             {criteriaList.map((c, index) => (
                                 <div className="form-group" key={c.id}>
                                     <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
