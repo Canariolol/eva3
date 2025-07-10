@@ -1,5 +1,6 @@
 import React from 'react';
 import Tooltip from './Tooltip';
+import { stripHtml } from '../utils/textUtils'; // Importar la nueva utilidad
 import './LabelWithDescription.css';
 
 const LabelWithDescription = ({ item, title }) => {
@@ -9,19 +10,21 @@ const LabelWithDescription = ({ item, title }) => {
     }
 
     const showAsTooltip = item.displayAsTooltip ?? false;
+    const plainTextDescription = stripHtml(item.description); // Limpiar el HTML para el tooltip
 
     return (
         <div className="label-with-description">
             <div className="label-title">
-                <span>{title}</span>
-                {showAsTooltip && item.description && (
-                    <Tooltip text={item.description}>
+                {title && <span>{title}</span>}
+                {showAsTooltip && plainTextDescription && (
+                    <Tooltip text={plainTextDescription}>
                         <span className="info-icon">i</span>
                     </Tooltip>
                 )}
             </div>
             {!showAsTooltip && item.description && item.displayDescription && (
-                <p className="description-text">{item.description}</p>
+                // Para la descripción desplegada, usamos el HTML original
+                <div className="description-text" dangerouslySetInnerHTML={{ __html: item.description }} />
             )}
         </div>
     );

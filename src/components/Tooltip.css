@@ -6,31 +6,34 @@
 
 .tooltip-box {
   position: absolute;
-  bottom: 100%; /* Position above the element */
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-bottom: 10px; /* Space from the element */
+  margin-bottom: 10px;
   background-color: #333;
   color: #fff;
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 0.9rem;
-  z-index: 1100; /* Aumentado para estar sobre la sidebar */
-  white-space: nowrap;
+  z-index: 1100;
+  
+  /* Ancho del tooltip ajustado */
+  min-width: 300px;
+  max-width: 400px;
+  white-space: pre-wrap;
+  
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0s 0.3s;
   pointer-events: none;
 }
 
-/* Add the delay on hover */
 .tooltip-container:hover .tooltip-box {
   transition-delay: 0.2s;
   opacity: 1;
   visibility: visible;
 }
 
-/* Optional: Add a small arrow */
 .tooltip-box::after {
   content: '';
   position: absolute;
