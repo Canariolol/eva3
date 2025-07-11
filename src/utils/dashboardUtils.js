@@ -11,21 +11,14 @@ export const normalizeScore = (score, scaleType) => {
 
     switch (scaleType) {
         case '1-10':
-            // Convierte de 1-10 a 0-100
-            // (1 -> 0, 10 -> 100)
             return ((score - 1) / 9) * 100;
         case '1-5':
-            // Convierte de 1-5 a 0-100
-            // (1 -> 0, 5 -> 100)
             return ((score - 1) / 4) * 100;
         case 'binary':
-            // 10 (Cumple) -> 100, 0 (No Cumple) -> 0
             return score === 10 ? 100 : 0;
         case 'percentage':
-            // Ya está en una escala de 0-100
             return score;
         default:
-            // Por defecto, asumimos 1-10 si no se especifica
             return ((score - 1) / 9) * 100;
     }
 };
@@ -40,36 +33,40 @@ const truncateName = (name) => {
 export const processDataForLineChart = (evaluations, dateField) => {
     const dataByDate = evaluations.reduce((acc, curr) => {
         const dateValue = curr[dateField];
-        if (!dateValue || typeof dateValue.toLocaleDateString !== 'function') return acc;
+        if (!dateValue || typeof dateValue.toISOString !== 'function') return acc;
+
+        const dateKey = dateValue.toISOString().slice(0, 10);
         
-        const date = dateValue.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        
-        if (!acc[date]) {
-            acc[date] = { date, originalDate: dateValue }; // Guardar la fecha original
+        if (!acc[dateKey]) {
+            const day = String(dateValue.getDate()).padStart(2, '0');
+            const month = String(dateValue.getMonth() + 1).padStart(2, '0'); // Se suma 1 porque getMonth() es base 0
+            
+            acc[dateKey] = { 
+                date: `${day}/${month}`, 
+                originalDate: dateValue 
+            };
         }
         
-        if (!acc[date][curr.executive]) {
-            acc[date][curr.executive] = [];
+        if (!acc[dateKey][curr.executive]) {
+            acc[dateKey][curr.executive] = [];
         }
 
         const scores = Object.values(curr.scores);
         if (scores.length > 0) {
             const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-            acc[date][curr.executive].push(avgScore);
+            acc[dateKey][curr.executive].push(avgScore);
         }
         return acc;
     }, {});
 
     const dataArray = Object.values(dataByDate);
 
-    // Ordenar cronológicamente usando la fecha original
     dataArray.sort((a, b) => a.originalDate - b.originalDate);
 
-    // Mapear al formato final para el gráfico
     return dataArray.map(dateEntry => {
         const newDateEntry = { date: dateEntry.date };
         Object.keys(dateEntry).forEach(key => {
-            if (key !== 'date' && key !== 'originalDate') { // Ignorar las claves de fecha
+            if (key !== 'date' && key !== 'originalDate') {
                 const executiveScores = dateEntry[key];
                 const avgScore = executiveScores.reduce((a, b) => a + b, 0) / executiveScores.length;
                 newDateEntry[key] = parseFloat(avgScore.toFixed(2));
@@ -175,7 +172,7 @@ export const processNonEvaluableData = (sectionEvaluations, nonEvaluableCriteria
                         id: ev.id, 
                         executive: ev.executive, 
                         date: ev.evaluationDate,
-                        managementDate: ev.managementDate, // Añadir fecha de gestión
+                        managementDate: ev.managementDate,
                         executiveId: executive ? executive.id : null
                     });
                 } else {
