@@ -6,7 +6,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import CustomTooltip from '../components/Dashboard/CustomTooltip';
 import './Team.css';
 
-// ... (Componente Modal sin cambios)
 const Modal = ({ children, onClose, size = 'default' }) => {
     const [isClosing, setIsClosing] = useState(false);
 
@@ -25,6 +24,32 @@ const Modal = ({ children, onClose, size = 'default' }) => {
     );
 };
 
+// Helper function to format various data types for display
+const formatDisplayValue = (value) => {
+    if (!value) return '';
+
+    let date;
+    // Check if it's a Firestore timestamp
+    if (typeof value === 'object' && value.seconds) {
+        date = new Date(value.seconds * 1000);
+    } 
+    // Check if it's already a JavaScript Date object
+    else if (value instanceof Date) {
+        date = value;
+    } 
+    // If it's not a date-like object, return it as is
+    else {
+        return value;
+    }
+
+    // Check if a specific time was set (other than midnight)
+    if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
+        return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    // Otherwise, just show the date
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
 
 const Team = () => {
     const { executives, evaluations, evaluationSections } = useGlobalContext();
@@ -33,10 +58,9 @@ const Team = () => {
 
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
-    const [sectionFilter, setSectionFilter] = useState('All'); // Nuevo estado para el filtro
+    const [sectionFilter, setSectionFilter] = useState('All');
 
     useEffect(() => {
-        // ... (lógica de useEffect sin cambios)
         const executiveId = searchParams.get('executiveId');
         const evaluationId = searchParams.get('evaluationId');
 
@@ -91,7 +115,7 @@ const Team = () => {
         delete currentParams.evaluationId;
         setSearchParams(currentParams);
     };
-
+    
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
 
@@ -176,8 +200,8 @@ const Team = () => {
                                 <div>
                                     <strong>{ev.section}</strong>
                                     <span className="evaluation-dates">
-                                        Fecha Evaluación: {ev.evaluationDate.toLocaleDateString('es-ES')}
-                                        {sectionConfig?.includeManagementDate && ev.managementDate && ` | Fecha Gestión: ${ev.managementDate.toLocaleDateString('es-ES')}`}
+                                        Fecha Evaluación: {formatDisplayValue(ev.evaluationDate)}
+                                        {sectionConfig?.includeManagementDate && ev.managementDate && ` | Fecha Gestión: ${formatDisplayValue(ev.managementDate)}`}
                                     </span>
                                 </div>
                                 <span className="evaluation-avg">
@@ -190,8 +214,7 @@ const Team = () => {
             </div>
         );
     };
-    
-    // ... (renderEvaluationDetailModal y el resto del componente sin cambios)
+
     const renderEvaluationDetailModal = () => {
         if (!selectedEvaluation) return null;
         const sectionConfig = evaluationSections.find(s => s.name === selectedEvaluation.section);
@@ -200,8 +223,8 @@ const Team = () => {
             <Modal onClose={handleCloseEvaluationModal}>
                 <div className="evaluation-detail-modal">
                     <h2>Detalle de la Evaluación</h2>
-                    <p><strong>Fecha de Evaluación:</strong> {selectedEvaluation.evaluationDate.toLocaleDateString('es-ES')}</p>
-                    {sectionConfig?.includeManagementDate && selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {selectedEvaluation.managementDate.toLocaleDateString('es-ES')}</p>}
+                    <p><strong>Fecha de Evaluación:</strong> {formatDisplayValue(selectedEvaluation.evaluationDate)}</p>
+                    {sectionConfig?.includeManagementDate && selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {formatDisplayValue(selectedEvaluation.managementDate)}</p>}
                     <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
                     
                     <h4>Puntajes</h4>
@@ -221,7 +244,7 @@ const Team = () => {
                             {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
                                 <li key={name} className='config-list-item'>
                                     <span>{name}</span>
-                                    <span>{value}</span>
+                                    <span>{formatDisplayValue(value)}</span>
                                 </li>
                             ))}
                             </ul>
@@ -277,6 +300,5 @@ const Team = () => {
         </>
     );
 };
-
 
 export default Team;
