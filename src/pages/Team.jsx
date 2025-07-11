@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
-import { useAuth } from '../context/AuthContext'; // Importar el contexto de autenticación
+import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomTooltip from '../components/Dashboard/CustomTooltip';
 import './Team.css';
 
+// ... (Componente Modal sin cambios)
 const Modal = ({ children, onClose, size = 'default' }) => {
     const [isClosing, setIsClosing] = useState(false);
 
@@ -24,6 +25,7 @@ const Modal = ({ children, onClose, size = 'default' }) => {
     );
 };
 
+
 const Team = () => {
     const { executives, evaluations, evaluationSections } = useGlobalContext();
     const { userRole, executiveData } = useAuth();
@@ -31,12 +33,13 @@ const Team = () => {
 
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+    const [sectionFilter, setSectionFilter] = useState('All'); // Nuevo estado para el filtro
 
     useEffect(() => {
+        // ... (lógica de useEffect sin cambios)
         const executiveId = searchParams.get('executiveId');
         const evaluationId = searchParams.get('evaluationId');
 
-        // Si el usuario es un ejecutivo y no hay un ID en la URL, mostrar su propio detalle por defecto.
         if (userRole === 'executive' && !executiveId && executiveData) {
             setSearchParams({ executiveId: executiveData.id });
             return;
@@ -45,7 +48,6 @@ const Team = () => {
         if (executiveId && executives.length > 0) {
             const execToSelect = executives.find(e => e.id === executiveId);
             
-            // Un ejecutivo solo puede ver su propio detalle.
             if (userRole === 'executive' && execToSelect?.id !== executiveData?.id) {
                 setSelectedExecutive(null);
             } else {
@@ -89,11 +91,16 @@ const Team = () => {
         delete currentParams.evaluationId;
         setSearchParams(currentParams);
     };
-    
+
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
 
         const executiveEvals = evaluations.filter(e => e.executive === selectedExecutive.Nombre);
+        
+        const filteredEvals = sectionFilter === 'All' 
+            ? executiveEvals 
+            : executiveEvals.filter(e => e.section === sectionFilter);
+
         if (executiveEvals.length === 0) {
             return (
                 <div className="executive-details-modal">
@@ -102,7 +109,7 @@ const Team = () => {
                 </div>
             );
         }
-
+        
         const sectionsWithData = evaluationSections.map(section => {
             const evals = executiveEvals.filter(e => e.section === section.name);
             if (evals.length === 0) return null;
@@ -149,9 +156,20 @@ const Team = () => {
                     ))}
                 </div>
 
-                <h3>Historial de Evaluaciones</h3>
+                <div className="evaluation-history-header">
+                    <h3>Historial de Evaluaciones</h3>
+                    <select 
+                        className="form-control" 
+                        value={sectionFilter} 
+                        onChange={(e) => setSectionFilter(e.target.value)}
+                        style={{width: '250px'}}
+                    >
+                        <option value="All">Mostrar Todas</option>
+                        {evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                </div>
                 <ul className="config-list">
-                    {executiveEvals.map(ev => {
+                    {filteredEvals.map(ev => {
                         const sectionConfig = evaluationSections.find(s => s.name === ev.section);
                         return (
                             <li key={ev.id} className="config-list-item" onClick={() => handleSelectEvaluation(ev)}>
@@ -172,7 +190,8 @@ const Team = () => {
             </div>
         );
     };
-
+    
+    // ... (renderEvaluationDetailModal y el resto del componente sin cambios)
     const renderEvaluationDetailModal = () => {
         if (!selectedEvaluation) return null;
         const sectionConfig = evaluationSections.find(s => s.name === selectedEvaluation.section);
@@ -258,5 +277,6 @@ const Team = () => {
         </>
     );
 };
+
 
 export default Team;

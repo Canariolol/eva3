@@ -100,3 +100,18 @@
     white-space: pre-wrap; /* Preserve line breaks from the textarea */
     color: #343a40;
 }
+
+.evaluation-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2.5rem;
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 0.5rem;
+}
+
+.evaluation-history-header h3 {
+    margin: 0;
+    border: none;
+    padding: 0;
+}
