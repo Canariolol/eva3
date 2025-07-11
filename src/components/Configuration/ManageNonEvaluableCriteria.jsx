@@ -71,6 +71,7 @@ const ManageNonEvaluableCriteria = ({
                             <select className="form-control" value={newCriterion.inputType} onChange={(e) => setNewCriterion({ ...newCriterion, inputType: e.target.value })}>
                                 <option value="text">Texto</option>
                                 <option value="select">Desplegable</option>
+                                <option value="date">Fecha</option>
                             </select>
                         </div>
                         {newCriterion.inputType === 'select' && (

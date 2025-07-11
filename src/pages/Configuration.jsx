@@ -112,7 +112,7 @@ const Configuration = () => {
         const dataToSave = { ...newNonEvaluableCriterion };
         if (dataToSave.inputType === 'select' && typeof dataToSave.options === 'string') {
             dataToSave.options = dataToSave.options.split(',').map(opt => opt.trim());
-        } else if (dataToSave.inputType === 'text') {
+        } else if (dataToSave.inputType === 'text' || dataToSave.inputType === 'date') {
             delete dataToSave.options;
         }
         await addDoc(collection(db, 'nonEvaluableCriteria'), dataToSave);
@@ -197,7 +197,7 @@ const Configuration = () => {
 
     const getNonEvaluableSubtitle = (item) => {
         const parts = [];
-        parts.push(item.inputType === 'select' ? 'Desplegable' : 'Texto');
+        parts.push(item.inputType === 'select' ? 'Desplegable' : (item.inputType === 'date' ? 'Fecha' : 'Texto'));
         if (item.trackInDashboard) parts.push('Seguimiento Detallado');
         if (item.trackEmptyInDashboard) parts.push('Conteo Vacíos');
         return `(${parts.join(', ')})`;
@@ -214,7 +214,7 @@ const Configuration = () => {
         { name: 'name', label: 'Nombre del Criterio' },
         { name: 'description', label: 'Descripción', type: 'textarea' },
         { name: 'section', label: 'Sección', type: 'select', options: evaluationSections.map(s => ({ value: s.name, label: s.name })) },
-        { name: 'inputType', label: 'Tipo de Campo', type: 'select', options: [{value: 'text', label: 'Texto'}, {value: 'select', label: 'Desplegable'}] },
+        { name: 'inputType', label: 'Tipo de Campo', type: 'select', options: [{value: 'text', label: 'Texto'}, {value: 'select', label: 'Desplegable'}, {value: 'date', label: 'Fecha'}] },
         ...(item.inputType === 'select' ? [{ name: 'options', label: 'Opciones (separadas por comas)'}] : []),
         { name: 'trackInDashboard', label: 'Seguimiento Detallado', type: 'checkbox', checkboxLabel: 'Mostrar desglose de valores en Dashboard' },
         { name: 'trackEmptyInDashboard', label: 'Conteo de Vacíos', type: 'checkbox', checkboxLabel: 'Contar valores N/A o vacíos en Dashboard' }

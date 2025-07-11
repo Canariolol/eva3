@@ -94,7 +94,14 @@ const Evaluate = () => {
 
             const initialNonEvaluableData = {};
             filteredNonEvaluable.forEach(c => {
-                initialNonEvaluableData[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : '';
+                 let initialValue = '';
+                if (c.inputType === 'select' && c.options?.length > 0) {
+                    initialValue = c.options[0];
+                } else if (c.inputType === 'date') {
+                    // Para nuevos formularios, inicializa la fecha a hoy
+                    initialValue = new Date().toISOString().slice(0, 10);
+                }
+                initialNonEvaluableData[c.name] = initialValue;
             });
             setNonEvaluableData(initialNonEvaluableData);
             setObservations('');
@@ -147,7 +154,15 @@ const Evaluate = () => {
                 setScores(initialScores);
 
                 const initialNonEvaluable = {};
-                filteredNonEvaluableCriteria.forEach(c => { initialNonEvaluable[c.name] = (c.inputType === 'select' && c.options?.length > 0) ? c.options[0] : ''; });
+                filteredNonEvaluableCriteria.forEach(c => {
+                    let initialValue = '';
+                    if (c.inputType === 'select' && c.options?.length > 0) {
+                        initialValue = c.options[0];
+                    } else if (c.inputType === 'date') {
+                        initialValue = new Date().toISOString().slice(0, 10);
+                    }
+                    initialNonEvaluable[c.name] = initialValue;
+                });
                 setNonEvaluableData(initialNonEvaluable);
                 setObservations('');
             }
@@ -196,6 +211,8 @@ const Evaluate = () => {
                                 <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
                                 {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
+                            ) : c.inputType === 'date' ? (
+                                <input type="date" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
                             ) : (
                                 <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
                             )}
