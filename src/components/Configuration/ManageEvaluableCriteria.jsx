@@ -42,7 +42,7 @@ const ManageEvaluableCriteria = ({
                             <textarea className="form-control" rows="2" value={newCriterion.description} onChange={(e) => setNewCriterion({ ...newCriterion, description: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label>Sección Principal</label>
+                            <label>Sección</label>
                             <select className="form-control" value={newCriterion.section} onChange={(e) => setNewCriterion({ ...newCriterion, section: e.target.value, subsection: '' })}>
                                 {evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                             </select>
