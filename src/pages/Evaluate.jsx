@@ -7,7 +7,7 @@ import DynamicScoreSelector from '../components/DynamicScoreSelector';
 import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
 
-// Función para convertir hex a rgba
+// La función se mantiene porque es necesaria para el estilo de la descripción
 const hexToRgba = (hex, alpha = 0.1) => {
     if (!hex || typeof hex !== 'string') return `rgba(0, 123, 255, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
@@ -27,7 +27,7 @@ const Evaluate = () => {
     const [selectedExecutive, setSelectedExecutive] = useState('');
     const [scores, setScores] = useState({});
     const [nonEvaluableData, setNonEvaluableData] = useState({});
-    const [timeData, setTimeData] = useState({}); // Estado para las horas
+    const [timeData, setTimeData] = useState({});
     const [managementDate, setManagementDate] = useState(new Date().toISOString().slice(0, 10));
     const [observations, setObservations] = useState('');
     const [message, setMessage] = useState('');
@@ -43,10 +43,9 @@ const Evaluate = () => {
                 setSelectedExecutive(existingEvaluation.executive);
                 setScores(existingEvaluation.scores || {});
                 
-                // Procesar fechas y horas
                 const newTimeData = {};
-                if (existingEvaluation.managementDate) {
-                    const dateObj = new Date(existingEvaluation.managementDate);
+                if (existingEvaluation.managementDate?.seconds) {
+                    const dateObj = new Date(existingEvaluation.managementDate.seconds * 1000);
                     setManagementDate(dateObj.toISOString().slice(0, 10));
                     if (dateObj.getHours() !== 0 || dateObj.getMinutes() !== 0) {
                         newTimeData['managementDate'] = dateObj.toTimeString().slice(0, 5);
@@ -70,7 +69,6 @@ const Evaluate = () => {
                 setObservations(existingEvaluation.observations || '');
             }
         } else {
-            // Resetear para nuevo formulario
             setEvaluationId(null);
             if (evaluationSections.length > 0 && !evaluationType) {
                 setEvaluationType(evaluationSections[0].name);
@@ -136,7 +134,6 @@ const Evaluate = () => {
 
         const currentSection = evaluationSections.find(s => s.name === evaluationType);
 
-        // Procesar datos no evaluables para convertir fechas a objetos Date
         const processedNonEvaluableData = { ...nonEvaluableData };
         Object.keys(processedNonEvaluableData).forEach(key => {
             const criterion = nonEvaluableCriteria.find(c => c.name === key);
@@ -221,14 +218,14 @@ const Evaluate = () => {
             case 'select':
                 return (
                     <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
-                        {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        {c.options && c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                 );
             case 'date':
                 return (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <input type="date" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                        <input type="time" className="form-control" value={timeData[c.name] || ''} onChange={(e) => handleTimeChange(c.name, e.target.value)} />
+                    <div className="form-control-wrapper">
+                        <input type="date" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
+                        <input type="time" value={timeData[c.name] || ''} onChange={(e) => handleTimeChange(c.name, e.target.value)} />
                     </div>
                 );
             case 'text':
@@ -253,9 +250,9 @@ const Evaluate = () => {
                     </div>
                     {selectedSection?.includeManagementDate && (<div className="form-group">
                         <label>Fecha de gestión</label>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} />
-                            <input className="form-control" type="time" value={timeData.managementDate || ''} onChange={e => handleTimeChange('managementDate', e.target.value)} />
+                        <div className="form-control-wrapper">
+                            <input type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} />
+                            <input type="time" value={timeData.managementDate || ''} onChange={e => handleTimeChange('managementDate', e.target.value)} />
                         </div>
                     </div>)}
                     
