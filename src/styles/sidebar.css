@@ -1,0 +1,94 @@
+/* src/styles/sidebar.css */
+
+.sidebar {
+  width: 220px;
+  background-color: var(--color-dark);
+  color: var(--color-light);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.3s ease;
+  position: relative;
+  z-index: 1200;
+}
+
+.sidebar-header {
+  margin-bottom: 2rem;
+}
+
+.sidebar-header h3 {
+  color: white;
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.sidebar-header span {
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-list li a {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 15px;
+  color: var(--color-light);
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.nav-list li a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-list li a.active {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.app-layout.sidebar-collapsed .sidebar {
+    width: 80px;
+}
+
+.app-layout.sidebar-collapsed .sidebar .sidebar-header h3,
+.app-layout.sidebar-collapsed .sidebar .sidebar-header span,
+.app-layout.sidebar-collapsed .sidebar .nav-list span {
+    display: none;
+}
+
+.app-layout.sidebar-collapsed .sidebar .nav-list a {
+    justify-content: center;
+}
+
+.sidebar-collapse-toggle {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.sidebar-collapse-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
