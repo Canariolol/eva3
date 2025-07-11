@@ -20,7 +20,6 @@ const Evaluate = () => {
     const { executives, criteria, nonEvaluableCriteria, evaluationSections, aptitudeSubsections, evaluations, refreshData } = useGlobalContext();
     const [searchParams] = useSearchParams();
     
-    // ... (estados sin cambios)
     const [evaluationId, setEvaluationId] = useState(null);
     const [evaluationType, setEvaluationType] = useState('');
     const [groupedCriteria, setGroupedCriteria] = useState({});
@@ -28,6 +27,7 @@ const Evaluate = () => {
     const [selectedExecutive, setSelectedExecutive] = useState('');
     const [scores, setScores] = useState({});
     const [nonEvaluableData, setNonEvaluableData] = useState({});
+    const [timeData, setTimeData] = useState({}); // Estado para las horas
     const [managementDate, setManagementDate] = useState(new Date().toISOString().slice(0, 10));
     const [observations, setObservations] = useState('');
     const [message, setMessage] = useState('');
@@ -42,13 +42,35 @@ const Evaluate = () => {
                 setEvaluationType(existingEvaluation.section);
                 setSelectedExecutive(existingEvaluation.executive);
                 setScores(existingEvaluation.scores || {});
-                setNonEvaluableData(existingEvaluation.nonEvaluableData || {});
-                setObservations(existingEvaluation.observations || '');
+                
+                // Procesar fechas y horas
+                const newTimeData = {};
                 if (existingEvaluation.managementDate) {
-                    setManagementDate(new Date(existingEvaluation.managementDate.seconds * 1000).toISOString().slice(0,10));
+                    const dateObj = new Date(existingEvaluation.managementDate);
+                    setManagementDate(dateObj.toISOString().slice(0, 10));
+                    if (dateObj.getHours() !== 0 || dateObj.getMinutes() !== 0) {
+                        newTimeData['managementDate'] = dateObj.toTimeString().slice(0, 5);
+                    }
                 }
+
+                const newNonEvaluableData = { ...existingEvaluation.nonEvaluableData };
+                Object.keys(newNonEvaluableData).forEach(key => {
+                    const criterion = nonEvaluableCriteria.find(c => c.name === key);
+                    if (criterion?.inputType === 'date' && newNonEvaluableData[key]?.seconds) {
+                        const dateObj = new Date(newNonEvaluableData[key].seconds * 1000);
+                        newNonEvaluableData[key] = dateObj.toISOString().slice(0, 10);
+                        if (dateObj.getHours() !== 0 || dateObj.getMinutes() !== 0) {
+                            newTimeData[key] = dateObj.toTimeString().slice(0, 5);
+                        }
+                    }
+                });
+
+                setNonEvaluableData(newNonEvaluableData);
+                setTimeData(newTimeData);
+                setObservations(existingEvaluation.observations || '');
             }
         } else {
+            // Resetear para nuevo formulario
             setEvaluationId(null);
             if (evaluationSections.length > 0 && !evaluationType) {
                 setEvaluationType(evaluationSections[0].name);
@@ -57,60 +79,48 @@ const Evaluate = () => {
                 setSelectedExecutive(executives[0].Nombre);
             }
         }
-    }, [searchParams, evaluations, executives, evaluationSections]);
+    }, [searchParams, evaluations, executives, evaluationSections, nonEvaluableCriteria]);
 
     useEffect(() => {
-        if (!evaluationType) return;
+        if (!evaluationType || evaluationId) return;
 
         const filteredEvaluable = criteria.filter(c => c.section === evaluationType);
         const filteredNonEvaluable = nonEvaluableCriteria.filter(c => c.section === evaluationType);
         
-        if (evaluationType === 'Aptitudes Transversales') {
-            const subsectionNamesInOrder = [...aptitudeSubsections.map(s => s.name), 'Sin Subsección'];
-            const groups = subsectionNamesInOrder.reduce((acc, subName) => ({ ...acc, [subName]: [] }), {});
-
-            filteredEvaluable.forEach(c => {
-                const groupName = c.subsection || 'Sin Subsección';
-                if (groups[groupName]) {
-                    groups[groupName].push(c);
-                } else {
-                    if(!groups['Sin Subsección']) groups['Sin Subsección'] = [];
-                    groups['Sin Subsección'].push(c);
-                }
-            });
-            setGroupedCriteria(groups);
-        } else {
-            setGroupedCriteria({ 'Criterios': filteredEvaluable });
-        }
+        setGroupedCriteria(evaluationType === 'Aptitudes Transversales' 
+            ? aptitudeSubsections.reduce((acc, sub) => ({...acc, [sub.name]: filteredEvaluable.filter(c => c.subsection === sub.name)}), {'Sin Subsección': filteredEvaluable.filter(c => !c.subsection)})
+            : { 'Criterios': filteredEvaluable }
+        );
 
         setFilteredNonEvaluableCriteria(filteredNonEvaluable);
         
-        if (!evaluationId) {
-            const initialScores = {};
-            const selectedSection = evaluationSections.find(s => s.name === evaluationType);
-            const defaultScore = selectedSection?.scaleType === 'binary' ? 10 : (selectedSection?.scaleType === 'percentage' ? 100 : 5);
-            filteredEvaluable.forEach(c => { initialScores[c.name] = defaultScore; });
-            setScores(initialScores);
+        const initialScores = {};
+        const selectedSection = evaluationSections.find(s => s.name === evaluationType);
+        const defaultScore = selectedSection?.scaleType === 'binary' ? 10 : (selectedSection?.scaleType === 'percentage' ? 100 : (selectedSection?.scaleType === '1-5' ? 3 : 5));
+        filteredEvaluable.forEach(c => { initialScores[c.name] = defaultScore; });
+        setScores(initialScores);
 
-            const initialNonEvaluableData = {};
-            filteredNonEvaluable.forEach(c => {
-                 let initialValue = '';
-                if (c.inputType === 'select' && c.options?.length > 0) {
-                    initialValue = c.options[0];
-                } else if (c.inputType === 'date') {
-                    // Para nuevos formularios, inicializa la fecha a hoy
-                    initialValue = new Date().toISOString().slice(0, 10);
-                }
-                initialNonEvaluableData[c.name] = initialValue;
-            });
-            setNonEvaluableData(initialNonEvaluableData);
-            setObservations('');
-        }
+        const initialNonEvaluableData = {};
+        const initialTimeData = {};
+        filteredNonEvaluable.forEach(c => {
+            if (c.inputType === 'select' && c.options?.length > 0) {
+                initialNonEvaluableData[c.name] = c.options[0];
+            } else if (c.inputType === 'date') {
+                initialNonEvaluableData[c.name] = new Date().toISOString().slice(0, 10);
+                initialTimeData[c.name] = '';
+            } else {
+                initialNonEvaluableData[c.name] = '';
+            }
+        });
+        setNonEvaluableData(initialNonEvaluableData);
+        setTimeData(initialTimeData);
+        setObservations('');
 
     }, [evaluationType, criteria, nonEvaluableCriteria, aptitudeSubsections, evaluationId, evaluationSections]);
   
     const handleScoreChange = (criterionName, value) => setScores(prev => ({ ...prev, [criterionName]: Number(value) }));
     const handleNonEvaluableDataChange = (criterionName, value) => setNonEvaluableData(prev => ({ ...prev, [criterionName]: value }));
+    const handleTimeChange = (criterionName, value) => setTimeData(prev => ({...prev, [criterionName]: value}));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -125,15 +135,31 @@ const Evaluate = () => {
         }
 
         const currentSection = evaluationSections.find(s => s.name === evaluationType);
+
+        // Procesar datos no evaluables para convertir fechas a objetos Date
+        const processedNonEvaluableData = { ...nonEvaluableData };
+        Object.keys(processedNonEvaluableData).forEach(key => {
+            const criterion = nonEvaluableCriteria.find(c => c.name === key);
+            if (criterion?.inputType === 'date' && processedNonEvaluableData[key]) {
+                const dateStr = processedNonEvaluableData[key];
+                const timeStr = timeData[key] || '';
+                processedNonEvaluableData[key] = new Date(`${dateStr}${timeStr ? 'T' + timeStr : ''}`);
+            }
+        });
+        
         let evaluationData = {
             executive: selectedExecutive,
             section: evaluationType,
             scaleType: currentSection?.scaleType || '1-10',
             scores: scores,
-            nonEvaluableData: nonEvaluableData,
+            nonEvaluableData: processedNonEvaluableData,
             observations: observations,
-            ...(currentSection?.includeManagementDate && { managementDate: new Date(managementDate) })
         };
+
+        if (currentSection?.includeManagementDate) {
+            const timeStr = timeData.managementDate || '';
+            evaluationData.managementDate = new Date(`${managementDate}${timeStr ? 'T' + timeStr : ''}`);
+        }
         
         try {
             if (evaluationId) {
@@ -154,16 +180,18 @@ const Evaluate = () => {
                 setScores(initialScores);
 
                 const initialNonEvaluable = {};
+                const initialTime = {};
                 filteredNonEvaluableCriteria.forEach(c => {
                     let initialValue = '';
-                    if (c.inputType === 'select' && c.options?.length > 0) {
-                        initialValue = c.options[0];
-                    } else if (c.inputType === 'date') {
+                    if (c.inputType === 'select' && c.options?.length > 0) initialValue = c.options[0];
+                    if (c.inputType === 'date') {
                         initialValue = new Date().toISOString().slice(0, 10);
+                        initialTime[c.name] = '';
                     }
                     initialNonEvaluable[c.name] = initialValue;
                 });
                 setNonEvaluableData(initialNonEvaluable);
+                setTimeData(initialTime);
                 setObservations('');
             }
 
@@ -188,6 +216,27 @@ const Evaluate = () => {
         margin: '1rem 0'
     };
 
+    const renderNonEvaluableInput = (c) => {
+        switch (c.inputType) {
+            case 'select':
+                return (
+                    <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
+                        {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                );
+            case 'date':
+                return (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input type="date" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
+                        <input type="time" className="form-control" value={timeData[c.name] || ''} onChange={(e) => handleTimeChange(c.name, e.target.value)} />
+                    </div>
+                );
+            case 'text':
+            default:
+                return <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />;
+        }
+    };
+
     return (
         <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
             <h4 className="card-title card-title-primary">{formTitle}</h4>
@@ -202,20 +251,18 @@ const Evaluate = () => {
                         )}
                         <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                     </div>
-                    {selectedSection?.includeManagementDate && (<div className="form-group"><label>Fecha de gestión</label><input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} /></div>)}
+                    {selectedSection?.includeManagementDate && (<div className="form-group">
+                        <label>Fecha de gestión</label>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <input className="form-control" type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} />
+                            <input className="form-control" type="time" value={timeData.managementDate || ''} onChange={e => handleTimeChange('managementDate', e.target.value)} />
+                        </div>
+                    </div>)}
                     
                     {filteredNonEvaluableCriteria.map((c) => (
                         <div className="form-group" key={c.id}>
                             <LabelWithDescription item={c} title={c.name} />
-                            {c.inputType === 'select' ? (
-                                <select className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)}>
-                                {c.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            ) : c.inputType === 'date' ? (
-                                <input type="date" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                            ) : (
-                                <input type="text" className="form-control" value={nonEvaluableData[c.name] || ''} onChange={(e) => handleNonEvaluableDataChange(c.name, e.target.value)} />
-                            )}
+                            {renderNonEvaluableInput(c)}
                         </div>
                     ))}
                 </div>
