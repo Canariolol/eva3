@@ -4,13 +4,14 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-import { FiGrid, FiUsers, FiEdit, FiSettings, FiChevronsLeft, FiChevronsRight } from 'react-icons/fi'; // Importar íconos
+import { FiGrid, FiUsers, FiEdit, FiSettings, FiChevronsLeft, FiChevronsRight, FiMail } from 'react-icons/fi'; // Importar íconos
 
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import CustomTab from './pages/CustomTab';
+import CorreosYCasos from './pages/CorreosYCasos'; // <-- Importar la nueva página
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -61,6 +62,8 @@ const AppLayout = () => {
                 <ul className="nav-list">
                     <li><NavLink to="/" end><FiGrid /><span>Dashboard</span></NavLink></li>
                     <li><NavLink to="/team"><FiUsers /><span>Equipo</span></NavLink></li>
+                    {/* Nueva pestaña de Correos y Casos */}
+                    <li><NavLink to="/correos"><FiMail /><span>Correos & Casos</span></NavLink></li>
                     
                     {customTabs.map(tab => (
                         <li key={tab.id}><NavLink to={`/tabs/${tab.id}`}><FiEdit /><span>{tab.name}</span></NavLink></li>
@@ -101,6 +104,7 @@ function App() {
                 <Route path="team" element={<Team />} />
 
                 {/* Protected Routes */}
+                <Route path="correos" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><CorreosYCasos /></ProtectedRoute>} />
                 <Route path="tabs/:tabId" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><CustomTab /></ProtectedRoute>} />
                 <Route path="evaluate" element={<ProtectedRoute allowedRoles={['admin']}><Evaluate /></ProtectedRoute>} />
                 <Route path="configuration" element={<ProtectedRoute allowedRoles={['admin']}><Configuration /></ProtectedRoute>} />

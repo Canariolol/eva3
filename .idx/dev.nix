@@ -6,6 +6,7 @@
   # Use https://search.nixos.org/packages to find packages
   packages = [
     pkgs.nodejs_20
+    pkgs.python311 # Adding Python 3.11 to the environment
   ];
   # Sets environment variables in the workspace
   env = {};
