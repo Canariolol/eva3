@@ -1,7 +1,6 @@
 import os
 import re
 import email.utils
-# MODIFICADO: Añadimos la opción de región
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app
 from google.oauth2.credentials import Credentials
@@ -41,19 +40,36 @@ def index():
 
 @app.route('/login')
 def login():
-    # ADVERTENCIA: Esta URL cambiará después del despliegue
+    """
+    CORRECCIÓN DEFINITIVA: En lugar de una redirección invisible que el iframe bloquea,
+    devolvemos una página con un script y un enlace que fuerzan la navegación en la ventana principal.
+    """
+    # Asegúrate de que esta URL sea la correcta de tu función en southamerica-west1
     redirect_uri = "https://gmail-api-handler-7r5ppdbuya-tl.a.run.app/callback"
+    
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=redirect_uri)
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
     session['state'] = state
-    return redirect(authorization_url)
+    
+    # Devolvemos una página que fuerza la redirección fuera del iframe.
+    return f'''
+        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h2>Redirigiendo a Google para iniciar sesión...</h2>
+            <p>Si no eres redirigido automáticamente, haz clic en el siguiente enlace:</p>
+            <a href="{authorization_url}" target="_top" style="font-size: 1.2em;">Continuar a Google</a>
+            <script>
+                // Este script fuerza la redirección en la ventana principal (top-level)
+                window.top.location.href = "{authorization_url}";
+            </script>
+        </body>
+    '''
 
 
 @app.route('/callback')
 def callback():
     state = request.args['state']
-    # ADVERTENCIA: Esta URL cambiará después del despliegue
+    # Asegúrate de que esta URL sea la correcta de tu función en southamerica-west1
     redirect_uri = "https://gmail-api-handler-7r5ppdbuya-tl.a.run.app/callback"
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state, redirect_uri=redirect_uri)

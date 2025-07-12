@@ -1,13 +1,16 @@
 .correos-casos-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* Utiliza el 100% de la altura de su contenedor padre (el 'main-content') */
+  height: 100%; 
   padding: 20px;
   background-color: #f9f9f9;
 }
 
 .page-header {
   margin-bottom: 20px;
+  /* Aseguramos que el encabezado no se expanda */
+  flex-shrink: 0; 
 }
 
 .page-header h1 {
@@ -36,7 +39,8 @@
 }
 
 .correos-iframe {
-  flex-grow: 1;
+  /* La clave: El iframe ahora crecerá para llenar todo el espacio vertical disponible */
+  flex-grow: 1; 
   border: none;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);

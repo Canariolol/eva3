@@ -1,4 +1,64 @@
-/* Contenido restante de App.css */
+:root {
+  --color-primary: #007bff;
+  --color-primary-light: #cce5ff;
+  --color-primary-dark: #0056b3;
+  --color-primary-pastel: #e7f3ff;
+  --color-secondary: #6c757d;
+  --color-success: #28a745;
+  --color-danger: #dc3545;
+  --color-warning: #ffc107;
+  --color-warning-light: #fff3cd;
+  --color-info: #17a2b8;
+  --color-light: #f8f9fa;
+  --color-dark: #343a40;
+  --color-background: #f4f7f6;
+  --color-sidebar: #ffffff;
+  --color-text: #212529;
+  --color-text-secondary: #6c757d;
+  --border-radius: 8px;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* --- Estilos para la maquetación principal --- */
+.app-layout {
+  display: flex;
+  height: 100vh; /* Ocupa toda la altura de la ventana */
+}
+
+.main-panel {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Asegura que el panel principal también ocupe toda la altura */
+  overflow: hidden; /* Previene scrollbars no deseadas en el panel */
+}
+
+.main-content {
+  flex-grow: 1; /* Permite que esta área crezca y ocupe el espacio disponible */
+  overflow-y: auto; /* Añade scroll si el contenido es más alto que el espacio */
+  padding: 20px;
+  display: flex; 
+  flex-direction: column;
+}
+
+.page-container {
+  width: 100%;
+  flex-grow: 1; /* La clave: permite que el contenedor de la página crezca */
+  display: flex; 
+  flex-direction: column;
+}
+/* --- FIN de nuevos estilos --- */
+
 
 h1 {
     color: var(--color-dark);
@@ -65,4 +125,53 @@ h1 {
     padding: 0.5rem 1rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--color-warning);
+}
+
+/* Transiciones de página */
+.page-fade-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.page-fade-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+.page-fade-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+.page-fade-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.sidebar-toggle {
+  display: none; /* Oculto en vista de escritorio */
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 1001;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -250px;
+    transition: left 0.3s ease;
+  }
+  .sidebar.open {
+    left: 0;
+  }
+  .sidebar-toggle {
+    display: block; /* Visible en móvil */
+  }
+  .main-panel {
+    margin-left: 0;
+  }
 }
