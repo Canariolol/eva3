@@ -1,47 +1,104 @@
-.correos-casos-container {
-  display: flex;
-  flex-direction: column;
-  /* Utiliza el 100% de la altura de su contenedor padre (el 'main-content') */
-  height: 100%; 
-  padding: 20px;
-  background-color: #f9f9f9;
+/* src/pages/CorreosYCasos.css */
+.correos-casos-container .error-message {
+    color: var(--color-danger);
+    background-color: #ffebee;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
 }
 
-.page-header {
-  margin-bottom: 20px;
-  /* Aseguramos que el encabezado no se expanda */
-  flex-shrink: 0; 
+.login-box {
+    text-align: center;
+    padding: 2rem;
+    border: 2px dashed var(--color-light);
+    border-radius: var(--border-radius);
 }
 
-.page-header h1 {
-  font-size: 24px;
-  color: #333;
+.filter-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 1.5rem;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: var(--color-light);
+    border-radius: var(--border-radius);
 }
 
-.page-header p {
-  font-size: 14px;
-  color: #666;
+.filter-form .form-group {
+    margin-bottom: 0;
 }
 
-.setup-notice {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
-  color: #856404;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
+.filter-form label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
 }
 
-.setup-notice code {
-  background-color: #e9ecef;
-  padding: 3px 6px;
-  border-radius: 4px;
+.filter-form .button {
+    height: fit-content;
 }
 
-.correos-iframe {
-  /* La clave: El iframe ahora crecerá para llenar todo el espacio vertical disponible */
-  flex-grow: 1; 
-  border: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.loading-text {
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.2rem;
+    color: var(--color-secondary);
+}
+
+.metrics-container {
+    margin-top: 2rem;
+}
+
+.metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.metric-box {
+    background-color: var(--color-background);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.metric-box span {
+    display: block;
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.metric-box strong {
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-light);
+}
+
+thead th {
+    background-color: var(--color-light);
+    font-weight: 600;
+}
+
+tbody tr:hover {
+    background-color: var(--color-light);
 }
