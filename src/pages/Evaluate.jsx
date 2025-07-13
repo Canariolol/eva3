@@ -6,6 +6,7 @@ import { addDoc, doc, updateDoc, collection, serverTimestamp } from 'firebase/fi
 import DynamicScoreSelector from '../components/DynamicScoreSelector'; 
 import LabelWithDescription from '../components/LabelWithDescription';
 import '../components/ScoreSelector.css';
+import './Evaluate.css'; // 1. Importar el nuevo archivo CSS
 
 // La función se mantiene porque es necesaria para el estilo de la descripción
 const hexToRgba = (hex, alpha = 0.1) => {
@@ -235,89 +236,93 @@ const Evaluate = () => {
     };
 
     return (
-        <div className="card" style={{maxWidth: '800px', margin: 'auto'}}>
-            <h4 className="card-title card-title-primary">{formTitle}</h4>
-            <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)} disabled={!!evaluationId}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
-                    <div className="form-group">
-                        {selectedSection?.displayAsTooltip ? (
-                            <LabelWithDescription item={selectedSection} title="Tipo de Evaluación" />
-                        ) : (
-                            <label>Tipo de Evaluación</label>
-                        )}
-                        <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
-                    </div>
-                    {selectedSection?.includeManagementDate && (<div className="form-group">
-                        <label>Fecha de gestión</label>
-                        <div className="form-control-wrapper">
-                            <input type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} />
-                            <input type="time" value={timeData.managementDate || ''} onChange={e => handleTimeChange('managementDate', e.target.value)} />
+        // 2. Envolver en un div con la nueva clase
+        <div className="evaluate-page-container">
+            {/* 3. Eliminar el estilo en línea maxWidth de la tarjeta */}
+            <div className="card">
+                <h4 className="card-title card-title-primary">{formTitle}</h4>
+                <form onSubmit={handleSubmit} style={{marginTop: '2rem'}}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className="form-group"><label>Ejecutivo</label><select className="form-control" value={selectedExecutive} onChange={(e) => setSelectedExecutive(e.target.value)} disabled={!!evaluationId}>{executives.map(e => <option key={e.id} value={e.Nombre}>{e.Nombre}</option>)}</select></div>
+                        <div className="form-group">
+                            {selectedSection?.displayAsTooltip ? (
+                                <LabelWithDescription item={selectedSection} title="Tipo de Evaluación" />
+                            ) : (
+                                <label>Tipo de Evaluación</label>
+                            )}
+                            <select className="form-control" value={evaluationType} onChange={(e) => setEvaluationType(e.target.value)} disabled={!!evaluationId}>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                         </div>
-                    </div>)}
+                        {selectedSection?.includeManagementDate && (<div className="form-group">
+                            <label>Fecha de gestión</label>
+                            <div className="form-control-wrapper">
+                                <input type="date" value={managementDate} onChange={e => setManagementDate(e.target.value)} />
+                                <input type="time" value={timeData.managementDate || ''} onChange={e => handleTimeChange('managementDate', e.target.value)} />
+                            </div>
+                        </div>)}
+                        
+                        {filteredNonEvaluableCriteria.map((c) => (
+                            <div className="form-group" key={c.id}>
+                                <LabelWithDescription item={c} title={c.name} />
+                                {renderNonEvaluableInput(c)}
+                            </div>
+                        ))}
+                    </div>
                     
-                    {filteredNonEvaluableCriteria.map((c) => (
-                        <div className="form-group" key={c.id}>
-                            <LabelWithDescription item={c} title={c.name} />
-                            {renderNonEvaluableInput(c)}
+                    {selectedSection?.displayDescription && !selectedSection.displayAsTooltip && selectedSection.description && (
+                        <div style={descriptionStyle}>
+                            <div className="ql-snow">
+                                <div className="ql-editor" dangerouslySetInnerHTML={{ __html: selectedSection.description }} />
+                            </div>
                         </div>
+                    )}
+
+                    <hr style={{margin: '2rem 0'}} />
+                    
+                    {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
+                        criteriaList.length > 0 && (
+                            <div key={groupName}>
+                                {evaluationType === 'Aptitudes Transversales' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                                        <h4>{groupName}</h4>
+                                        <LabelWithDescription item={aptitudeSubsections.find(s => s.name === groupName)} title="" />
+                                    </div>
+                                )}
+                                {criteriaList.map((c, index) => (
+                                    <div className="form-group" key={c.id}>
+                                        <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
+                                        <DynamicScoreSelector 
+                                            scaleType={selectedSection?.scaleType}
+                                            value={scores[c.name]} 
+                                            onChange={(score) => handleScoreChange(c.name, score)} 
+                                        />
+                                    </div>
+                                ))}
+                                {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
+                                    <hr style={{ margin: '2.5rem 0', border: '1px solid #eee' }} />
+                                )}
+                            </div>
+                        )
                     ))}
-                </div>
-                
-                {selectedSection?.displayDescription && !selectedSection.displayAsTooltip && selectedSection.description && (
-                    <div style={descriptionStyle}>
-                        <div className="ql-snow">
-                            <div className="ql-editor" dangerouslySetInnerHTML={{ __html: selectedSection.description }} />
-                        </div>
+
+                    {Object.values(groupedCriteria).every(list => list.length === 0) && <p>No hay criterios para este tipo de evaluación.</p>}
+                    
+                    <hr style={{margin: '2rem 0'}} />
+
+                    <div className="form-group">
+                        <label>Observaciones</label>
+                        <textarea 
+                            className="form-control" 
+                            rows="4"
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            placeholder="Añade comentarios u observaciones adicionales sobre la evaluación..."
+                        />
                     </div>
-                )}
 
-                <hr style={{margin: '2rem 0'}} />
-                
-                {Object.entries(groupedCriteria).map(([groupName, criteriaList], groupIndex) => (
-                    criteriaList.length > 0 && (
-                        <div key={groupName}>
-                            {evaluationType === 'Aptitudes Transversales' && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-                                    <h4>{groupName}</h4>
-                                    <LabelWithDescription item={aptitudeSubsections.find(s => s.name === groupName)} title="" />
-                                </div>
-                            )}
-                            {criteriaList.map((c, index) => (
-                                <div className="form-group" key={c.id}>
-                                    <LabelWithDescription item={c} title={`${index + 1}. ${c.name}`} />
-                                    <DynamicScoreSelector 
-                                        scaleType={selectedSection?.scaleType}
-                                        value={scores[c.name]} 
-                                        onChange={(score) => handleScoreChange(c.name, score)} 
-                                    />
-                                </div>
-                            ))}
-                            {evaluationType === 'Aptitudes Transversales' && groupIndex < Object.values(groupedCriteria).filter(list => list.length > 0).length - 1 && (
-                                <hr style={{ margin: '2.5rem 0', border: '1px solid #eee' }} />
-                            )}
-                        </div>
-                    )
-                ))}
-
-                {Object.values(groupedCriteria).every(list => list.length === 0) && <p>No hay criterios para este tipo de evaluación.</p>}
-                
-                <hr style={{margin: '2rem 0'}} />
-
-                <div className="form-group">
-                    <label>Observaciones</label>
-                    <textarea 
-                        className="form-control" 
-                        rows="4"
-                        value={observations}
-                        onChange={(e) => setObservations(e.target.value)}
-                        placeholder="Añade comentarios u observaciones adicionales sobre la evaluación..."
-                    />
-                </div>
-
-                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : (evaluationId ? 'Actualizar Evaluación' : 'Guardar Evaluación')}</button>
-                {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
-            </form>
+                    <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{width: '100%'}}>{isSubmitting ? 'Guardando...' : (evaluationId ? 'Actualizar Evaluación' : 'Guardar Evaluación')}</button>
+                    {message && <p style={{marginTop: '1rem', textAlign: 'center'}}>{message}</p>}
+                </form>
+            </div>
         </div>
     );
 };

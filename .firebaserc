@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "eva3-1b284"
+    "production": "eva3-cathywest",
+    "development": "eva3-1b284",
+    "demo": "eva3-demo"
   }
 }

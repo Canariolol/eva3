@@ -32,3 +32,5 @@ src/firebase-instances.js
 to do
 functions/client_secret.json
 
+functions/.env.development
+functions/.env.production

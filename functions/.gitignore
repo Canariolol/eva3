@@ -4,3 +4,58 @@ __pycache__/
 # Python virtual environment
 venv/
 *.local
+
+# dependencies
+node_modules/
+/functions/lib/
+
+# local env files
+.env
+.env*.local
+/functions/.env.*
+
+# log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# testing
+/coverage
+
+# misc
+.DS_Store
+.idea
+.vscode/
+
+# build output
+dist/
+dist-ssr/
+*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+database-debug.log
+firestore-debug.log
+
+# IDX
+.idx
+*.pid
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.tmp
+*.psd
+.project
+.classpath
+.c9/
+.settings/
+.cache/
+.npm/
+.nvm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

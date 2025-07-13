@@ -1,0 +1,11 @@
+/* src/pages/Evaluate.css */
+
+/*
+  Esta regla apunta específicamente a un elemento con la clase .evaluate-page-container
+  y luego a cualquier .card que esté dentro de él.
+  Esto asegura que SOLO la tarjeta en la página de evaluación se vea afectada.
+*/
+.evaluate-page-container .card {
+  max-width: 800px; /* Aumentamos el ancho máximo */
+  margin: auto;     /* Mantenemos la tarjeta centrada */
+}

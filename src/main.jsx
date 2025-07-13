@@ -14,18 +14,23 @@ import './styles/components.css';
 import './styles/modal.css';
 import './styles/animations.css';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GlobalProvider } from './context/GlobalContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrowserRouter as Router } from 'react-router-dom';
 
+const googleClientId = "636042825570-a6bpcvdg5p5agdunbir9q9o9bdifk13s.apps.googleusercontent.com";
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router>
-      <GlobalProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </GlobalProvider>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <GlobalProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </GlobalProvider>
+      </GoogleOAuthProvider>
     </Router>
   </React.StrictMode>,
 );
