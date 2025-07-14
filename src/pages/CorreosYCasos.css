@@ -55,6 +55,7 @@
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
+    align-items: center;
 }
 
 .metric-box {
@@ -99,6 +100,58 @@ thead th {
     font-weight: 600;
 }
 
-tbody tr:hover {
+tbody tr.main-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+tbody tr.main-row:hover {
+    background-color: var(--color-primary-pastel);
+}
+
+.expanded-row td {
+    padding: 0;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.email-body-preview {
+    background-color: #fdfdfd;
+    padding: 1.5rem;
+    white-space: pre-wrap; /* Mantiene saltos de línea y espacios */
+    word-wrap: break-word; /* Evita que el texto se desborde */
+    font-family: monospace;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* --- NUEVOS ESTILOS --- */
+.raw-data-container {
+    margin: 2rem 0;
+    padding: 1rem;
     background-color: var(--color-light);
+    border-radius: var(--border-radius);
+}
+
+.raw-data-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.raw-data-box h4 {
+    margin-top: 0;
+}
+
+.raw-data-box pre {
+    background-color: var(--color-background);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    max-height: 250px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
