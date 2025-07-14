@@ -108,7 +108,7 @@ def get_emails():
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
             base_query_parts.append(f'before:{(end_date + timedelta(days=1)).strftime("%Y-%m-%d")}')
 
-        received_query = ' '.join(base_query_parts + ['in:inbox', '-from:soporte@west-ingenieria.cl', '-subject:"Delivery Status Notification"'])
+        received_query = ' '.join(base_query_parts + ['in:inbox', '-from:soporte@west-ingenieria.cl','-from:no-reply@west-ingenieria.cl', '-subject:"Delivery Status Notification"'])
         received_thread_ids = fetch_thread_ids(service, received_query)
 
         sent_query = ' '.join(base_query_parts + ['in:sent'])

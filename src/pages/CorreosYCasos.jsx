@@ -15,7 +15,7 @@ function CorreosYCasos() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const [subject, setSubject] = useState('evaluacion de calidad de la gestion');
+  const [subject, setSubject] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
