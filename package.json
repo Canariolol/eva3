@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "deploy:all": "npm run build && firebase deploy --only hosting --project eva3-1b284 && firebase deploy --only hosting --project eva3-cathywest && firebase deploy --only hosting --project eva3-demo",
     "deploy:prod": "firebase deploy --only functions --project production",
-    "deploy:dev": "firebase deploy --only functions --project development"
+    "deploy:dev": "firebase deploy --only functions --project development",
+    "deploy:hostdev": "npm run build && firebase deploy --only hosting --project development"
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
