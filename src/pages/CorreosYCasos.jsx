@@ -2,7 +2,8 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth } from "firebase/auth";
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AuthContext } from '../context/AuthContext';
 import './CorreosYCasos.css'; 
 
@@ -37,6 +38,13 @@ function CorreosYCasos() {
 
   const functionUrl = 'https://gmail-api-handler-7r5ppdbuya-tl.a.run.app';
 
+  const formatTimeDiff = (seconds) => {
+    const d = Math.floor(seconds / (3600*24));
+    const h = Math.floor(seconds % (3600*24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    return `${d}d ${h}h ${m}m`;
+  };
+
   useEffect(() => {
     if (!reportData || !reportData.details) {
       setMetrics(null);
@@ -48,15 +56,12 @@ function CorreosYCasos() {
     
     const valid_response_times = reportData.details
       .filter(d => d.is_answered && d.first_reply_time && d.received_date)
-      .map(d => new Date(d.first_reply_time) - new Date(d.received_date));
+      .map(d => (new Date(d.first_reply_time) - new Date(d.received_date)) / 1000);
     
     let average_response_time = "N/A";
     if(valid_response_times.length > 0) {
-        const avg_ms = valid_response_times.reduce((a, b) => a + b, 0) / valid_response_times.length;
-        const days = Math.floor(avg_ms / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((avg_ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((avg_ms % (1000 * 60 * 60)) / (1000 * 60));
-        average_response_time = `${days}d ${hours}h ${minutes}m`;
+        const avg_seconds = valid_response_times.reduce((a, b) => a + b, 0) / valid_response_times.length;
+        average_response_time = formatTimeDiff(avg_seconds);
     }
 
     setMetrics({ total_received, answered_emails, average_response_time, not_answered_count });
@@ -107,8 +112,24 @@ function CorreosYCasos() {
         }
         throw new Error(data.details || data.error || 'No se pudieron cargar los datos.');
       }
-      setReportData({ details: data.data.details, raw_data: data.data.raw_data });
-      setLateReplies(data.data.late_replies);
+      
+      const { details, late_replies } = data.data;
+
+      const lateFirstReplies = (late_replies.incorrect_details || []).map(item => ({
+        ...item,
+        from: `(Caso Antiguo) ${item.subject}`,
+        received_date: item.original_date,
+        is_answered: true,
+        is_late_first_reply: true,
+        response_time_str: 'N/A'
+      }));
+
+      const combinedDetails = [...details, ...lateFirstReplies];
+      combinedDetails.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
+      
+      setReportData({ details: combinedDetails, raw_data: data.data.raw_data });
+      setLateReplies(late_replies);
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -129,23 +150,48 @@ function CorreosYCasos() {
   };
 
   const handleSaveReport = async () => {
-    if (!reportData || !metrics) {
-        setError("No hay datos para guardar.");
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!reportData || !metrics || !currentUser) {
+        setError("No hay datos para guardar o el usuario no está autenticado.");
         return;
     }
+
     setIsSaving(true);
     setError(null);
+
     try {
-        const detailsToSave = reportData.details.map(({ body, ...rest }) => rest);
-        await addDoc(collection(db, "email_reports"), {
-            createdAt: serverTimestamp(),
-            createdBy: user.email,
+        // Step 1: Save or update each individual email case in a central collection
+        const detailsCollectionRef = collection(db, "unique_email_details");
+        
+        const detailsPromises = reportData.details.map(detail => {
+            const detailRef = doc(detailsCollectionRef, detail.thread_id);
+            const { body, ...detailToSave } = detail;
+            // Add a timestamp to know when this case was last seen in a report
+            detailToSave.last_processed_at = serverTimestamp();
+            return setDoc(detailRef, detailToSave, { merge: true });
+        });
+        
+        await Promise.all(detailsPromises);
+
+        // Step 2: Create or update the lightweight summary report
+        const summaryReportId = `${currentUser.email}_${startDate}_${endDate}_${subject || 'no-subject'}`;
+        const summaryReportRef = doc(db, "email_reports", summaryReportId);
+        
+        const summaryReport = {
+            createdBy: currentUser.email,
             filters: { subject, startDate, endDate },
             metrics: metrics,
-            corrected_details: detailsToSave,
+            updatedAt: serverTimestamp(),
+            // We no longer store the bulky details here
             ...(lateReplies && { late_replies_metrics: lateReplies })
-        });
-        alert("¡Reporte guardado con éxito!");
+        };
+        
+        await setDoc(summaryReportRef, summaryReport, { merge: true });
+
+        alert("¡Reporte y casos individuales guardados/actualizados con éxito!");
+
     } catch (error) {
         console.error("Error saving report: ", error);
         setError("No se pudo guardar el reporte en la base de datos.");
@@ -158,7 +204,7 @@ function CorreosYCasos() {
       setExpandedRow(prev => (prev === thread_id ? null : thread_id));
   }
   
-  const handleVerifyReply = async (thread_id, sender, subject) => {
+  const handleVerifyReply = async (thread_id, sender, subject, received_date) => {
     setIsVerifying(thread_id);
     setError(null);
     try {
@@ -171,13 +217,26 @@ function CorreosYCasos() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Error en la verificación");
 
-        if (data.found) {
-            setReportData(prevData => ({
-                ...prevData,
-                details: prevData.details.map(d => 
-                    d.thread_id === thread_id ? { ...d, is_answered: true, verified: true } : d
-                )
-            }));
+        if (data.found && data.reply_date) {
+            setReportData(prevData => {
+                const newDetails = prevData.details.map(d => {
+                    if (d.thread_id === thread_id) {
+                        const replyDate = new Date(data.reply_date);
+                        const receivedDate = new Date(received_date);
+                        const timeDiffSeconds = (replyDate - receivedDate) / 1000;
+                        
+                        return { 
+                            ...d, 
+                            is_answered: true, 
+                            verified: true,
+                            first_reply_time: data.reply_date,
+                            response_time_str: formatTimeDiff(timeDiffSeconds)
+                        };
+                    }
+                    return d;
+                });
+                return { ...prevData, details: newDetails };
+            });
         } else {
             alert("No se encontró una respuesta coincidente para este correo.");
         }
@@ -273,7 +332,11 @@ function CorreosYCasos() {
                         <MetricCard title="Respondidos" value={metrics.answered_emails} />
                         <MetricCard title="Sin Respuesta" value={metrics.not_answered_count} className="metric-red" />
                         <MetricCard title="Tiempo Medio Resp." value={metrics.average_response_time} />
-                        <button onClick={handleSaveReport} disabled={isSaving} className="button success">{isSaving ? 'Guardando...' : 'Guardar'}</button>
+                        <button onClick={handleSaveReport} disabled={isSaving} className="button success">{isSaving ? 'Guardando...' : 'Guardar Reporte'}</button>
+                    </div>
+
+                    <div className="info-box">
+                        <p><b>Nota sobre el botón "Verificar":</b> Úsalo en los casos marcados como "No" para realizar una búsqueda profunda en la carpeta 'Enviados'. Esto permite encontrar respuestas que se hayan enviado fuera del hilo de conversación original, solucionando posibles "falsos negativos".</p>
                     </div>
 
                     <h4>Detalle de Conversaciones Recibidas</h4>
@@ -292,7 +355,7 @@ function CorreosYCasos() {
                             <tbody>
                                 {reportData.details.length > 0 ? reportData.details.map(detail => (
                                     <React.Fragment key={detail.thread_id}>
-                                        <tr className={`main-row ${detail.is_duplicate ? 'is-duplicate' : ''} ${detail.verified ? 'is-verified' : ''}`} onClick={() => handleToggleRow(detail.thread_id)}>
+                                        <tr className={`main-row ${detail.is_duplicate ? 'is-duplicate' : ''} ${detail.verified ? 'is-verified' : ''} ${detail.is_late_first_reply ? 'is-late-first-reply' : ''}`} onClick={() => handleToggleRow(detail.thread_id)}>
                                             <td className="subject-cell">
                                                 <span>{detail.subject}</span>
                                                 <span className="sender-email">{detail.from}</span>
@@ -303,7 +366,7 @@ function CorreosYCasos() {
                                             <td>{detail.response_time_str}</td>
                                             <td className="actions-cell">
                                                 {!detail.is_answered && !detail.verified && (
-                                                    <button onClick={(e) => { e.stopPropagation(); handleVerifyReply(detail.thread_id, detail.from, detail.subject); }} disabled={isVerifying === detail.thread_id} className="button primary small">
+                                                    <button onClick={(e) => { e.stopPropagation(); handleVerifyReply(detail.thread_id, detail.from, detail.subject, detail.received_date); }} disabled={isVerifying === detail.thread_id} className="button primary small">
                                                         {isVerifying === detail.thread_id ? '...' : 'Verificar'}
                                                     </button>
                                                 )}

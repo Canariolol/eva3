@@ -51,6 +51,7 @@ def get_header(headers, name):
     return None
 
 def get_email_body(payload):
+    # This function remains unchanged
     if 'parts' in payload:
         for part in payload['parts']:
             if part['mimeType'] == 'text/plain':
@@ -65,6 +66,7 @@ def get_email_body(payload):
     return ""
 
 def fetch_thread_ids(service, query):
+    # This function remains unchanged
     thread_ids = set()
     page_token = None
     try:
@@ -100,10 +102,9 @@ def exchange_auth_code():
 
 @app.route('/api/emails', methods=['GET', 'OPTIONS'])
 def get_emails():
-    # This is the main function, with all the logic combined
+    # This main function remains unchanged in its logic
     if request.method == 'OPTIONS': return '', 204
     if 'credentials' not in session: return jsonify({"error": "User not authenticated"}), 401
-
     try:
         credentials = Credentials(**session['credentials'])
         service = build('gmail', 'v1', credentials=credentials)
@@ -241,15 +242,17 @@ def verify_reply():
         credentials = Credentials(**session['credentials'])
         service = build('gmail', 'v1', credentials=credentials)
         
-        # We need the email address, not the name
         sender_email = email.utils.parseaddr(original_sender)[1]
         
-        # Query for a sent email TO the original sender with the same subject
         query = f'in:sent to:"{sender_email}" subject:"{subject}"'
         results = service.users().messages().list(userId='me', q=query, maxResults=1).execute()
         
         if results.get('messages'):
-            return jsonify({"found": True})
+            msg_id = results['messages'][0]['id']
+            message = service.users().messages().get(userId='me', id=msg_id).execute()
+            reply_date_str = get_header(message['payload']['headers'], 'Date')
+            reply_date = parse_date(reply_date_str)
+            return jsonify({"found": True, "reply_date": reply_date.isoformat() if reply_date else None})
         else:
             return jsonify({"found": False})
             
