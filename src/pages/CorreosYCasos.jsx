@@ -20,6 +20,7 @@ function CorreosYCasos() {
   
   const [isGmailConnected, setIsGmailConnected] = useState(false);
   const [reportData, setReportData] = useState(null);
+  const [debugData, setDebugData] = useState(null); // ADDED
   const [metrics, setMetrics] = useState(null);
   const [lateReplies, setLateReplies] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +33,7 @@ function CorreosYCasos() {
   const [endDate, setEndDate] = useState('');
   
   const [expandedRow, setExpandedRow] = useState(null);
-  const [showRawData, setShowRawData] = useState(false);
+  const [showDebug, setShowDebug] = useState(false); // ADDED
   const [showLateIncorrect, setShowLateIncorrect] = useState(false);
   const [showLateCorrect, setShowLateCorrect] = useState(false);
 
@@ -98,6 +99,7 @@ function CorreosYCasos() {
     setError(null);
     setReportData(null); 
     setLateReplies(null); 
+    setDebugData(null); // ADDED: Reset debug data on new fetch
     
     const params = new URLSearchParams({ subject, start_date: startDate, end_date: endDate });
     const requestUrl = `${functionUrl}/api/emails?${params.toString()}`;
@@ -113,7 +115,7 @@ function CorreosYCasos() {
         throw new Error(data.details || data.error || 'No se pudieron cargar los datos.');
       }
       
-      const { details, late_replies } = data.data;
+      const { details, late_replies, debug_data } = data.data;
 
       const lateFirstReplies = (late_replies.incorrect_details || []).map(item => ({
         ...item,
@@ -127,8 +129,9 @@ function CorreosYCasos() {
       const combinedDetails = [...details, ...lateFirstReplies];
       combinedDetails.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
       
-      setReportData({ details: combinedDetails, raw_data: data.data.raw_data });
+      setReportData({ details: combinedDetails });
       setLateReplies(late_replies);
+      setDebugData(debug_data); // ADDED: Set debug data from API response
 
     } catch (err) {
       setError(err.message);
@@ -162,32 +165,24 @@ function CorreosYCasos() {
     setError(null);
 
     try {
-        // Step 1: Save or update each individual email case in a central collection
         const detailsCollectionRef = collection(db, "unique_email_details");
-        
         const detailsPromises = reportData.details.map(detail => {
             const detailRef = doc(detailsCollectionRef, detail.thread_id);
             const { body, ...detailToSave } = detail;
-            // Add a timestamp to know when this case was last seen in a report
             detailToSave.last_processed_at = serverTimestamp();
             return setDoc(detailRef, detailToSave, { merge: true });
         });
-        
         await Promise.all(detailsPromises);
 
-        // Step 2: Create or update the lightweight summary report
         const summaryReportId = `${currentUser.email}_${startDate}_${endDate}_${subject || 'no-subject'}`;
         const summaryReportRef = doc(db, "email_reports", summaryReportId);
-        
         const summaryReport = {
             createdBy: currentUser.email,
             filters: { subject, startDate, endDate },
             metrics: metrics,
             updatedAt: serverTimestamp(),
-            // We no longer store the bulky details here
             ...(lateReplies && { late_replies_metrics: lateReplies })
         };
-        
         await setDoc(summaryReportRef, summaryReport, { merge: true });
 
         alert("¡Reporte y casos individuales guardados/actualizados con éxito!");
@@ -338,6 +333,45 @@ function CorreosYCasos() {
                     <div className="info-box">
                         <p><b>Nota sobre el botón "Verificar":</b> Úsalo en los casos marcados como "No" para realizar una búsqueda profunda en la carpeta 'Enviados'. Esto permite encontrar respuestas que se hayan enviado fuera del hilo de conversación original, solucionando posibles "falsos negativos".</p>
                     </div>
+                    
+                    {/* ADDED: Debug Section */}
+                    {debugData && (
+                        <div className="debug-section">
+                            <button onClick={() => setShowDebug(!showDebug)} className="button text-button">
+                                {showDebug ? 'Ocultar' : 'Mostrar'} Listas de Depuración
+                            </button>
+                            {showDebug && (
+                                <div className="debug-tables-container">
+                                    <div className="debug-table">
+                                        <h4>Bandeja de Entrada (Bruto) ({debugData.raw_inbox.length})</h4>
+                                        <div className="table-responsive-debug">
+                                            <table>
+                                                <thead><tr><th>Asunto</th><th>De</th><th>Fecha</th></tr></thead>
+                                                <tbody>
+                                                    {debugData.raw_inbox.map(email => (
+                                                        <tr key={email.id}><td>{email.subject}</td><td>{email.from}</td><td>{formatDate(email.date)}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div className="debug-table">
+                                        <h4>Elementos Enviados (Bruto) ({debugData.raw_sent.length})</h4>
+                                        <div className="table-responsive-debug">
+                                            <table>
+                                                <thead><tr><th>Asunto</th><th>Para</th><th>Fecha</th></tr></thead>
+                                                <tbody>
+                                                    {debugData.raw_sent.map(email => (
+                                                        <tr key={email.id}><td>{email.subject}</td><td>{email.to}</td><td>{formatDate(email.date)}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <h4>Detalle de Conversaciones Recibidas</h4>
                     <div className="table-responsive">

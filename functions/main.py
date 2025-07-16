@@ -10,10 +10,11 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from flask import Flask, request, session, jsonify
 from flask_cors import CORS
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from googleapiclient.errors import HttpError
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from collections import defaultdict
+import pytz
 
 options.set_global_options(region="southamerica-west1")
 initialize_app()
@@ -82,6 +83,39 @@ def fetch_thread_ids(service, query):
         print(f"Error fetching thread IDs for query '{query}': {e}")
     return thread_ids
 
+def fetch_raw_list(service, query):
+    # This function remains unchanged
+    messages_list = []
+    page_token = None
+    try:
+        while True:
+            results = service.users().messages().list(userId='me', q=query, maxResults=100, pageToken=page_token).execute()
+            messages = results.get('messages', [])
+            if not messages: break
+            
+            batch = service.new_batch_http_request(callback=lambda id, resp, exc: messages_list.append(resp) if not exc else None)
+            for msg in messages:
+                batch.add(service.users().messages().get(userId='me', id=msg['id'], format='metadata', metadataHeaders=['Subject', 'From', 'To', 'Date']))
+            batch.execute()
+
+            page_token = results.get('nextPageToken')
+            if not page_token: break
+    except HttpError as e:
+        print(f"Error fetching raw list for query '{query}': {e}")
+    
+    processed_list = []
+    for msg in messages_list:
+        if msg and 'payload' in msg and 'headers' in msg['payload']:
+             processed_list.append({
+                'id': msg.get('id'),
+                'threadId': msg.get('threadId'),
+                'subject': get_header(msg['payload']['headers'], 'Subject'),
+                'from': get_header(msg['payload']['headers'], 'From'),
+                'to': get_header(msg['payload']['headers'], 'To'),
+                'date': get_header(msg['payload']['headers'], 'Date'),
+            })
+    return processed_list
+
 @app.route('/api/auth/google', methods=['POST', 'OPTIONS'])
 def exchange_auth_code():
     # This function remains unchanged
@@ -102,9 +136,9 @@ def exchange_auth_code():
 
 @app.route('/api/emails', methods=['GET', 'OPTIONS'])
 def get_emails():
-    # This main function remains unchanged in its logic
     if request.method == 'OPTIONS': return '', 204
     if 'credentials' not in session: return jsonify({"error": "User not authenticated"}), 401
+
     try:
         credentials = Credentials(**session['credentials'])
         service = build('gmail', 'v1', credentials=credentials)
@@ -113,19 +147,24 @@ def get_emails():
         end_date_str = request.args.get('end_date')
         subject = request.args.get('subject')
         
+        # --- Timezone-Aware Date Filtering ---
+        chile_tz = pytz.timezone('America/Santiago')
+        
+        start_date_dt = chile_tz.localize(datetime.strptime(start_date_str, '%Y-%m-%d'))
+        end_date_dt = chile_tz.localize(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d').date(), time(23, 59, 59)))
+        
+        start_timestamp = int(start_date_dt.timestamp())
+        end_timestamp = int(end_date_dt.timestamp())
+
+        query_date_parts = [f'after:{start_timestamp}', f'before:{end_timestamp}']
+        # --- End of Timezone-Aware Filtering ---
+
         base_query_parts = []
         if subject: base_query_parts.append(f'subject:"{subject}"')
         
-        start_date_filter = datetime.fromisoformat(start_date_str).astimezone() if start_date_str else None
-        end_date_filter = (datetime.fromisoformat(end_date_str).astimezone() + timedelta(days=1)) if end_date_str else None
-        
-        query_date_parts = []
-        if start_date_str: query_date_parts.append(f'after:{start_date_str}')
-        if end_date_str:
-            end_date_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
-            query_date_parts.append(f'before:{(end_date_dt + timedelta(days=1)).strftime("%Y-%m-%d")}')
+        final_query_parts = base_query_parts + query_date_parts
 
-        received_query = ' '.join(base_query_parts + query_date_parts + ['in:inbox'])
+        received_query = ' '.join(final_query_parts + ['in:inbox'])
         received_thread_ids = fetch_thread_ids(service, received_query)
         
         sent_query_all_time = ' '.join(base_query_parts + ['in:sent'])
@@ -146,8 +185,6 @@ def get_emails():
                 sender_email = email.utils.parseaddr(original_email_msg['from'])[1]
                 if any(domain in sender_email for domain in INTERNAL_DOMAINS): continue
                 if any(keyword in original_email_msg['subject'].lower() for keyword in IGNORED_SUBJECT_KEYWORDS): continue
-
-                if not original_email_msg['date'] or (start_date_filter and original_email_msg['date'] < start_date_filter) or (end_date_filter and original_email_msg['date'] >= end_date_filter): continue
                 
                 body_content = get_email_body(original_email_msg['payload'])
                 is_answered = thread_id in sent_thread_ids_all_time
@@ -186,7 +223,7 @@ def get_emails():
             'correct_details': []
         }
         
-        sent_in_period_query = ' '.join(base_query_parts + query_date_parts + ['in:sent'])
+        sent_in_period_query = ' '.join(final_query_parts + ['in:sent'])
         sent_in_period_thread_ids = fetch_thread_ids(service, sent_in_period_query)
         late_reply_candidate_ids = sent_in_period_thread_ids - received_thread_ids
 
@@ -200,7 +237,7 @@ def get_emails():
                 messages_with_dates.sort(key=lambda x: x['date'] if x['date'] else datetime.min.astimezone())
                 original_email_msg = messages_with_dates[0]
 
-                if original_email_msg['date'] and start_date_filter and original_email_msg['date'] < start_date_filter:
+                if original_email_msg['date'] and original_email_msg['date'] < start_date_dt:
                     sent_messages = [m for m in messages_with_dates if 'SENT' in m['labelIds']]
                     if not sent_messages: continue
                     first_ever_reply = sent_messages[0]
@@ -212,7 +249,7 @@ def get_emails():
                         'first_reply_date': first_ever_reply['date'].isoformat()
                     }
 
-                    if first_ever_reply['date'] and start_date_filter <= first_ever_reply['date'] < end_date_filter:
+                    if first_ever_reply['date'] and start_date_dt <= first_ever_reply['date'] <= end_date_dt:
                         late_replies_data['incorrect_first_reply'] += 1
                         late_replies_data['incorrect_details'].append(detail_to_add)
                     else:
@@ -220,7 +257,24 @@ def get_emails():
                         late_replies_data['correct_details'].append(detail_to_add)
             except HttpError as e: print(f"Skipping late reply thread {thread_id} due to API error: {e}")
         
-        return jsonify({"status": "success", "data": {"details": email_details, "late_replies": late_replies_data}})
+        debug_inbox_query = ' '.join(final_query_parts + ['in:inbox'])
+        debug_sent_query = ' '.join(final_query_parts + ['in:sent'])
+        raw_inbox_list = fetch_raw_list(service, debug_inbox_query)
+        raw_sent_list = fetch_raw_list(service, debug_sent_query)
+        
+        debug_data = {
+            "raw_inbox": raw_inbox_list,
+            "raw_sent": raw_sent_list
+        }
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "details": email_details,
+                "late_replies": late_replies_data,
+                "debug_data": debug_data
+            }
+        })
     except InvalidGrantError:
         session.pop('credentials', None)
         session.pop('user_info', None)
