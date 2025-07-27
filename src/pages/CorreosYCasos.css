@@ -27,7 +27,11 @@
 .login-box { text-align: center; padding: 40px; }
 
 .filter-form { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px; }
-.form-group { flex: 1; min-width: 180px; }
+.form-group { flex: 1 1 auto; }
+.form-group.keywords-group { flex-grow: 2; } /* Allow keywords to take more space */
+.form-group.checkbox-group { flex-grow: 0; white-space: nowrap; }
+.form-group.checkbox-group label { display: flex; align-items: center; height: 38px; /* Align with text inputs */ }
+
 .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
 .form-control { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
 
@@ -89,32 +93,10 @@ tr.is-late-first-reply:hover { background-color: #f5c6cb !important; }
 .actions-cell { white-space: nowrap; }
 .actions-cell .button { margin-left: 5px; }
 
-/* New styles for debug section */
-.debug-section {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px dashed #ccc;
-}
-.debug-tables-container {
-    display: flex;
-    gap: 20px;
-    margin-top: 10px;
-}
-.debug-table {
-    flex: 1;
-}
-.debug-table h4 {
-    font-size: 1.1rem;
-    color: #666;
-    margin-bottom: 10px;
-}
-.table-responsive-debug {
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-.table-responsive-debug table td, .table-responsive-debug table th {
-    font-size: 0.85rem;
-    padding: 8px 10px;
-}
+/* Debug Section Styles */
+.debug-section { margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
+.debug-tables-container { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
+.debug-table { flex: 1; min-width: 300px; }
+.debug-table h4 { font-size: 1.1rem; color: #666; margin-bottom: 10px; }
+.table-responsive-debug { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+.table-responsive-debug table td, .table-responsive-debug table th { font-size: 0.85rem; padding: 8px 10px; }
