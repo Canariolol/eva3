@@ -4,7 +4,7 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 import { db } from './firebase';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-import { FiGrid, FiUsers, FiEdit, FiSettings, FiChevronsLeft, FiChevronsRight, FiMail, FiFileText } from 'react-icons/fi'; // Importar nuevo ícono
+import { FiGrid, FiUsers, FiEdit, FiSettings, FiChevronsLeft, FiChevronsRight, FiMail, FiFileText } from 'react-icons/fi';
 
 import Dashboard from './pages/Dashboard';
 import Team from './pages/Team';
@@ -12,19 +12,20 @@ import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import CustomTab from './pages/CustomTab';
 import CorreosYCasos from './pages/CorreosYCasos';
-import ReportesDeArea from './pages/ReportesDeArea'; // 1. Importar el nuevo componente
+import ReportesDeArea from './pages/ReportesDeArea';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import './App.css';
+import './styles/dark-mode.css'; // Import dark mode styles
 import Footer from './components/Footer';
 import Header from './components/Header';
 import './components/Header.css';
+import DarkModeToggle from './components/DarkModeToggle';
 
 const AppLayout = () => {
-    // ... (el resto del componente AppLayout se mantiene igual)
     const { loading: globalLoading, error, customTabs } = useGlobalContext();
-    const { userRole, loading: authLoading, currentUser } = useAuth();
+    const { userRole, loading: authLoading } = useAuth();
     const location = useLocation();
     const projectId = db.app.options.projectId;
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -59,7 +60,6 @@ const AppLayout = () => {
                     <li><NavLink to="/team"><FiUsers /><span>Equipo</span></NavLink></li>
                     <li><NavLink to="/correos"><FiMail /><span>Correos & Casos</span></NavLink></li>
                     
-                    {/* 4. Añadir el enlace en el sidebar (visible solo para admins) */}
                     {userRole === 'admin' && (
                         <>
                             <li><NavLink to="/reportes-de-area"><FiFileText /><span>Reportes de Área</span></NavLink></li>
@@ -76,9 +76,12 @@ const AppLayout = () => {
                         </>
                     )}
                 </ul>
-                <button onClick={toggleSidebarCollapse} className="sidebar-collapse-toggle">
-                    {isSidebarCollapsed ? <FiChevronsRight /> : <FiChevronsLeft />}
-                </button>
+                 <div className="sidebar-footer">
+                    <DarkModeToggle />
+                    <button onClick={toggleSidebarCollapse} className="sidebar-collapse-toggle">
+                        {isSidebarCollapsed ? <FiChevronsRight /> : <FiChevronsLeft />}
+                    </button>
+                </div>
             </nav>
             <div className="main-panel">
                 <Header />
@@ -106,7 +109,6 @@ function App() {
                 <Route path="correos" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><CorreosYCasos /></ProtectedRoute>} />
                 <Route path="tabs/:tabId" element={<ProtectedRoute allowedRoles={['admin', 'executive']}><CustomTab /></ProtectedRoute>} />
                 
-                {/* 3. Añadir la nueva ruta protegida */}
                 <Route path="reportes-de-area" element={<ProtectedRoute allowedRoles={['admin']}><ReportesDeArea /></ProtectedRoute>} />
 
                 <Route path="evaluate" element={<ProtectedRoute allowedRoles={['admin']}><Evaluate /></ProtectedRoute>} />

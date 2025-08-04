@@ -1,0 +1,155 @@
+/* src/styles/dark-mode.css */
+
+body.dark-mode {
+    /* 
+     A more sophisticated, elegant, and low-contrast dark theme.
+     - Background is a very dark grey, not pure black.
+     - Surfaces (cards/modals) are a slightly lighter grey to create depth.
+     - Primary colors are adapted from the light theme for brand consistency.
+    */
+
+    --color-background: #212529; /* A very dark, desaturated blue-grey */
+    --color-surface: #343a40;    /* A lighter grey for cards, modals, and inputs */
+    --color-border: #495057;      /* A subtle border color */
+
+    --color-text: #f8f9fa;        /* Almost white, for high readability (matches light theme's --color-light) */
+    --color-text-secondary: #adb5bd; /* A softer grey for secondary text */
+
+    /* Re-map existing color names to their dark-theme equivalents */
+    --color-primary: #3b82f6;        /* A vibrant blue that works well on dark backgrounds */
+    --color-primary-dark: #2563eb;    /* A slightly darker blue for hover states */
+    --color-primary-pastel: rgba(59, 130, 246, 0.15); /* A translucent pastel for highlights */
+    
+    --color-secondary: #6c757d;       /* Secondary color can often remain the same */
+    
+    --color-success: #28a745;
+    --color-success-pastel: rgba(40, 167, 69, 0.15);
+    
+    --color-danger: #ef4444;        /* A slightly more vibrant red for visibility */
+    
+    --color-light: var(--color-surface); /* Remap light to the dark surface color */
+    --color-dark: var(--color-background); /* Remap dark to the dark background color */
+
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* --- Component-Specific Overrides --- */
+    
+    /* General Body */
+    background-color: var(--color-background);
+    color: var(--color-text);
+
+    /* Sidebar */
+    --color-sidebar-background: #1c1f23; /* Even darker for clear separation */
+    
+    /* Modals & Cards */
+    --color-card-background: var(--color-surface);
+    --color-card-header-background: #3e444a; /* Slightly darker header for cards */
+
+    /* Forms & Inputs */
+    --color-input-background: #3e444a;
+    --color-input-border: var(--color-border);
+    --color-input-text: var(--color-text);
+    
+    /* Rich Text Editor */
+    .ql-toolbar, .ql-container {
+        background-color: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+    }
+    .ql-editor {
+        color: var(--color-text) !important;
+    }
+    .ql-snow .ql-stroke {
+        stroke: var(--color-text-secondary) !important;
+    }
+    .ql-picker-label {
+        color: var(--color-text-secondary) !important;
+    }
+}
+
+/* Ensure key layout components use the new background color */
+.main-panel, .main-content {
+    background-color: var(--color-background);
+}
+
+/* Override for specific components that might have hardcoded colors */
+.dark-mode .form-control,
+.dark-mode .modal-content,
+.dark-mode .card {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.dark-mode .dropdown-menu {
+     background-color: var(--color-surface);
+     border-color: var(--color-border);
+}
+
+.dark-mode .dropdown-item {
+    color: var(--color-text);
+}
+.dark-mode .dropdown-item:hover {
+    background-color: var(--color-primary-dark);
+    color: #fff;
+}
+
+</tbody>
+</table>
+</div>
+</div>
+)}
+</div>
+)}
+
+
+<h4>Detalle de Conversaciones Iniciadas en el Período</h4>
+<div className="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Asunto y Remitente</th>
+                <th>Fecha Recibido</th>
+                <th>Respondido</th>
+                <th>Hora Primera Resp.</th>
+                <th>Tiempo de Respuesta</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {reportData.details.length > 0 ? reportData.details.map(detail => (
+                <React.Fragment key={detail.thread_id}>
+                    <tr className={`main-row ${detail.is_duplicate ? 'is-duplicate' : ''} ${detail.verified ? 'is-verified' : ''}`} onClick={() => handleToggleRow(detail.thread_id)}>
+                        <td className="subject-cell">
+                            <span>{detail.subject}</span>
+                            <span className="sender-email">{detail.from}</span>
+                        </td>
+                        <td>{formatDate(detail.received_date)}</td>
+                        <td>{detail.verified ? 'Sí (Verificado)' : (detail.is_answered ? 'Sí' : 'No')}</td>
+                        <td>{detail.first_reply_time ? formatDate(detail.first_reply_time) : 'N/A'}</td>
+                        <td>{detail.response_time_str}</td>
+                        <td className="actions-cell">
+                            {!detail.is_answered && !detail.verified && (
+                                <button onClick={(e) => { e.stopPropagation(); handleVerifyReply(detail.thread_id, detail.from, detail.subject, detail.received_date); }} disabled={isVerifying === detail.thread_id} className="button primary small">
+                                    {isVerifying === detail.thread_id ? '...' : 'Verificar'}
+                                </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteCase(detail.thread_id); }} className="button danger small">Eliminar</button>
+                        </td>
+                    </tr>
+                    {expandedRow === detail.thread_id && (
+                        <tr className="expanded-row"><td colSpan="6"><div className="email-body-preview"><pre>{detail.body || "Cuerpo vacío."}</pre></div></td></tr>
+                    )}
+                </React.Fragment>
+            )) : (
+                <tr><td colSpan="6">No se encontraron conversaciones iniciadas en este período.</td></tr>
+            )}
+        </tbody>
+    </table>
+</div>
+</div>
+)}
+</div>
+)}
+</div>
+);
+}

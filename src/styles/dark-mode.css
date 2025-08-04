@@ -1,0 +1,149 @@
+/* src/styles/dark-mode.css */
+
+body.dark-mode {
+    /* 
+     A more sophisticated, elegant, and low-contrast dark theme.
+     - Background is a very dark grey, not pure black.
+     - Surfaces (cards/modals) are a slightly lighter grey to create depth.
+     - Primary colors are adapted from the light theme for brand consistency.
+    */
+
+    --color-background: #212529; /* A very dark, desaturated blue-grey */
+    --color-surface: #343a40;    /* A lighter grey for cards, modals, and inputs */
+    --color-border: #495057;      /* A subtle border color */
+
+    --color-text: #f8f9fa;        /* Almost white, for high readability (matches light theme's --color-light) */
+    --color-text-secondary: #adb5bd; /* A softer grey for secondary text */
+
+    /* Re-map existing color names to their dark-theme equivalents */
+    --color-primary: #3b82f6;        /* A vibrant blue that works well on dark backgrounds */
+    --color-primary-dark: #2563eb;    /* A slightly darker blue for hover states */
+    --color-primary-pastel: rgba(59, 130, 246, 0.15); /* A translucent pastel for highlights */
+    
+    --color-secondary: #6c757d;       /* Secondary color can often remain the same */
+    
+    --color-success: #28a745;
+    --color-success-pastel: rgba(40, 167, 69, 0.15);
+    
+    --color-danger: #ef4444;        /* A slightly more vibrant red for visibility */
+    
+    --color-light: var(--color-surface); /* Remap light to the dark surface color */
+    --color-dark: var(--color-background); /* Remap dark to the dark background color */
+
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* --- Component-Specific Overrides --- */
+    
+    /* General Body */
+    background-color: var(--color-background);
+    color: var(--color-text);
+
+    /* Sidebar */
+    --color-sidebar-background: #1c1f23; /* Even darker for clear separation */
+    
+    /* Modals & Cards */
+    --color-card-background: var(--color-surface);
+    --color-card-header-background: #3e444a; /* Slightly darker header for cards */
+
+    /* Forms & Inputs */
+    --color-input-background: #3e444a;
+    --color-input-border: var(--color-border);
+    --color-input-text: var(--color-text);
+    
+    /* Rich Text Editor */
+    .ql-toolbar, .ql-container {
+        background-color: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+    }
+    .ql-editor {
+        color: var(--color-text) !important;
+    }
+    .ql-snow .ql-stroke {
+        stroke: var(--color-text-secondary) !important;
+    }
+    .ql-picker-label {
+        color: var(--color-text-secondary) !important;
+    }
+}
+
+/* Ensure key layout components use the new background color */
+.main-panel, .main-content {
+    background-color: var(--color-background);
+}
+
+/* Override for specific components that might have hardcoded colors */
+.dark-mode .form-control,
+.dark-mode .modal-content,
+.dark-mode .card {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.dark-mode .dropdown-menu {
+     background-color: var(--color-surface);
+     border-color: var(--color-border);
+}
+
+.dark-mode .dropdown-item {
+    color: var(--color-text);
+}
+.dark-mode .dropdown-item:hover {
+    background-color: var(--color-primary-dark);
+    color: #fff;
+}
+
+/* --- TEXT AND TITLE VISIBILITY FIXES --- */
+
+/* General heading and text styles */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6,
+.dark-mode .card-title,
+.dark-mode .modal-title,
+.dark-mode p, /* Catch all paragraph text */
+.dark-mode li, /* Catch all list item text */
+.dark-mode label, /* Ensure all labels are light */
+.dark-mode span,  /* Broadly apply to spans */
+.dark-mode div   /* Broadly apply to divs */
+{
+    color: var(--color-text) !important; /* Use !important to override stubborn inline or specific styles */
+}
+
+/* More specific text elements that might need a softer color */
+.dark-mode .text-muted,
+.dark-mode .sender-email,
+.dark-mode .label-with-description .info-icon {
+    color: var(--color-text-secondary) !important;
+}
+
+/* General link styles */
+.dark-mode a {
+    color: var(--color-primary);
+}
+.dark-mode a:hover {
+    color: var(--color-primary-dark);
+}
+
+/* Sidebar navigation links */
+.dark-mode .sidebar .nav-list a span {
+    color: var(--color-text-secondary) !important;
+}
+
+.dark-mode .sidebar .nav-list a.active,
+.dark-mode .sidebar .nav-list a.active:hover {
+    color: #ffffff !important; /* White text for active link for max contrast */
+    background-color: var(--color-primary);
+}
+.dark-mode .sidebar .nav-list a.active span {
+    color: #ffffff !important;
+}
+
+.dark-mode .sidebar .nav-list a:hover span,
+.dark-mode .sidebar .nav-list a:hover {
+    color: var(--color-text) !important;
+    background-color: var(--color-surface);
+}

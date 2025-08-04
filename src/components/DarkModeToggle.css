@@ -1,0 +1,54 @@
+/* src/components/DarkModeToggle.css */
+.dark-mode-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.dark-mode-toggle label {
+    position: relative;
+    display: inline-block;
+    width: 40px; /* Smaller width */
+    height: 20px; /* Smaller height */
+}
+
+.dark-mode-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.dark-mode-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px; /* Adjusted for smaller size */
+}
+
+.dark-mode-toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px; /* Smaller circle */
+    width: 16px;  /* Smaller circle */
+    left: 2px;   /* Adjusted position */
+    bottom: 2px; /* Adjusted position */
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.dark-mode-toggle input:checked + .slider {
+    background-color: var(--color-primary, #2196F3);
+}
+
+.dark-mode-toggle input:focus + .slider {
+    box-shadow: 0 0 1px var(--color-primary, #2196F3);
+}
+
+.dark-mode-toggle input:checked + .slider:before {
+    transform: translateX(20px); /* Adjusted for smaller size */
+}

@@ -20,17 +20,39 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        if (import.meta.env.DEV) {
+            // En desarrollo, simplemente reseteamos el estado para simular un logout
+            setCurrentUser(null);
+            setUserRole(null);
+            setExecutiveData(null);
+            console.log("Simulated logout in dev mode.");
+            return Promise.resolve();
+        }
         return signOut(auth);
     };
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, user => {
-            setCurrentUser(user);
-        });
-        return unsubscribe;
+        // For development environment, bypass Firebase auth and set user as admin.
+        if (import.meta.env.DEV) {
+            console.log("Running in development mode. Simulating admin user.");
+            setCurrentUser({ email: "admin@dev.com", uid: "dev-admin-uid" });
+            setUserRole('admin');
+            setExecutiveData(null);
+            setLoading(false);
+        } else {
+            const unsubscribe = onAuthStateChanged(auth, user => {
+                setCurrentUser(user);
+            });
+            return unsubscribe;
+        }
     }, []);
 
     useEffect(() => {
+        // This effect should not run in development mode as we've already set the user.
+        if (import.meta.env.DEV) {
+            return;
+        }
+
         const determineRole = async () => {
             if (!currentUser) {
                 setLoading(false);
@@ -41,18 +63,18 @@ export const AuthProvider = ({ children }) => {
 
             setLoading(true);
 
-            // 1. Comprobar si es un Administrador
+            // 1. Check if user is an Admin
             const adminRef = doc(db, 'admins', currentUser.email);
             const adminSnap = await getDoc(adminRef);
 
             if (adminSnap.exists()) {
                 setUserRole('admin');
-                setExecutiveData(null); // Los admins no son ejecutivos
+                setExecutiveData(null); // Admins are not executives
                 setLoading(false);
                 return;
             }
 
-            // 2. Si no es admin, comprobar si es un Ejecutivo
+            // 2. If not an admin, check if user is an Executive
             if (executives.length > 0) {
                 const matchingExecutive = executives.find(exec => 
                     exec.Email && exec.Email.toLowerCase() === currentUser.email.toLowerCase()
@@ -62,7 +84,7 @@ export const AuthProvider = ({ children }) => {
                     setUserRole('executive');
                     setExecutiveData(matchingExecutive);
                 } else {
-                    // 3. Si no está en ninguna lista, no tiene rol
+                    // 3. If not in any list, user has no role
                     setUserRole(null);
                     setExecutiveData(null);
                 }

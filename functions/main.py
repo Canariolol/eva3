@@ -19,7 +19,6 @@ options.set_global_options(region="southamerica-west1")
 initialize_app()
 
 app = Flask(__name__)
-# Session logic is no longer needed
 CORS(app, origins=os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(','), supports_credentials=True, expose_headers=["Authorization"], allow_headers=["Authorization", "Content-Type"])
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
