@@ -1,7 +1,19 @@
 {
   "projects": {
-    "production": "eva3-cathywest",
-    "development": "eva3-1b284",
-    "demo": "eva3-demo"
-  }
+    "2080": "eva3-2080",
+    "cathywest": "eva3-cathywest"
+  },
+  "targets": {
+    "eva3-cathywest": {
+      "hosting": {
+        "2080": [
+          "eva3-2080"
+        ],
+        "cathywest": [
+          "eva3-cathywest"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

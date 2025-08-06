@@ -26,7 +26,6 @@ CLIENT_SECRETS_FILE = os.path.join(script_dir, 'client_secret.json')
 with open(CLIENT_SECRETS_FILE) as f:
     CLIENT_ID = json.load(f)['web']['client_id']
 
-# Re-introducing hardcoded filter for simplicity and reliability
 IGNORED_SENDERS = ["soporte@west-ingenieria.cl"]
 IGNORED_SUBJECT_KEYWORDS = ["out of office", "respuesta automática", "auto-reply", "undeliverable", "delivery status notification"]
 

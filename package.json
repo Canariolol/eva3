@@ -4,15 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "npm run dev",
     "dev": "vite",
-    "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "deploy:all": "npm run build && firebase deploy --only hosting --project eva3-1b284 && firebase deploy --only hosting --project eva3-cathywest && firebase deploy --only hosting --project eva3-demo",
-    "deploy:prod": "firebase deploy --only functions --project production",
-    "deploy:dev": "firebase deploy --only functions --project development",
-    "deploy:hostdev": "npm run build && firebase deploy --only hosting --project development"
+    "//--- Scripts de Despliegue por Entorno ---//": "",
+    "build:cathywest": "vite build --mode cathywest",
+    "deploy:cathywest": "firebase use cathywest && npm run build:cathywest && firebase deploy --only hosting:cathywest",
+    "build:2080": "vite build --mode 2080",
+    "deploy:2080": "firebase use 2080 && npm run build:2080 && firebase deploy --only hosting:2080",
+    "//--- Scripts de Despliegue de Backend (Firestore) ---//": "",
+    "deploy-firestore:cathywest": "firebase use cathywest && firebase deploy --only firestore",
+    "deploy-firestore:2080": "firebase use 2080 && firebase deploy --only firestore"
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
