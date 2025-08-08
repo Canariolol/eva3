@@ -27,7 +27,6 @@ function CorreosYCasos() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Simplified filters
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -36,7 +35,7 @@ function CorreosYCasos() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
 
-  const functionUrl = 'https://gmail-api-handler-7r5ppdbuya-tl.a.run.app';
+  const functionUrl = '/api'; 
 
   const formatTimeDiff = (seconds) => {
     const d = Math.floor(seconds / (3600*24));
@@ -74,6 +73,9 @@ function CorreosYCasos() {
     onError: () => {
         setError('Falló la conexión con Google.');
     },
+    // --- MODIFICACIÓN CLAVE ---
+    // Le pedimos explícitamente a Google el permiso para leer correos.
+    scope: 'https://www.googleapis.com/auth/gmail.readonly',
     flow: 'implicit',
   });
 
@@ -103,7 +105,7 @@ function CorreosYCasos() {
         start_date: filters.startDate,
         end_date: filters.endDate,
     });
-    const requestUrl = `${functionUrl}/api/emails?${params.toString()}`;
+    const requestUrl = `${functionUrl}/emails?${params.toString()}`;
 
     try {
       const response = await fetch(requestUrl, { 
@@ -119,9 +121,15 @@ function CorreosYCasos() {
         throw new Error(data.error || 'No se pudieron cargar los datos.');
       }
       
-      data.data.details.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
-      setReportData(data.data);
-      setDebugData(data.data.debug_data);
+      // La API ahora devuelve un objeto 'data' que contiene 'details' y 'debug_data'
+      if(data.data) {
+        data.data.details.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
+        setReportData(data.data);
+        setDebugData(data.data.debug_data);
+      } else {
+        setReportData({ details: [] });
+        setDebugData(null);
+      }
 
     } catch (err) {
       setError(err.message);
@@ -143,7 +151,7 @@ function CorreosYCasos() {
     setIsVerifying(thread_id);
     setError(null);
     try {
-        const response = await fetch(`${functionUrl}/api/verify_reply`, {
+        const response = await fetch(`${functionUrl}/verify_reply`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -250,7 +258,7 @@ function CorreosYCasos() {
           
           {isLoading && <p className="loading-text">Cargando métricas...</p>}
           
-          {!isLoading && metrics && reportData && (
+          {reportData && metrics && (
                 <div className="metrics-container">
                     <div className="metrics-summary">
                         <MetricCard title="Casos Recibidos" value={metrics.total_received} />
@@ -267,36 +275,13 @@ function CorreosYCasos() {
                     {debugData && (
                         <div className="debug-section">
                             <button onClick={() => setShowDebug(!showDebug)} className="button text-button">
-                                {showDebug ? 'Ocultar' : 'Mostrar'} Listas de Depuración
+                                {showDebug ? 'Ocultar' : 'Mostrar'} Detalles de Depuración
                             </button>
                             {showDebug && (
-                                <div className="debug-tables-container">
-                                    <div className="debug-table">
-                                        <h4>Bandeja de Entrada (Bruto) ({debugData.raw_inbox.length})</h4>
-                                        <div className="table-responsive-debug">
-                                            <table>
-                                                <thead><tr><th>Asunto</th><th>De</th><th>Fecha</th></tr></thead>
-                                                <tbody>
-                                                    {debugData.raw_inbox.map(email => (
-                                                        <tr key={email.id}><td>{email.subject}</td><td>{email.from}</td><td>{formatDate(email.date)}</td></tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    <div className="debug-table">
-                                        <h4>Elementos Enviados (Bruto) ({debugData.raw_sent.length})</h4>
-                                        <div className="table-responsive-debug">
-                                            <table>
-                                                <thead><tr><th>Asunto</th><th>Para</th><th>Fecha</th></tr></thead>
-                                                <tbody>
-                                                    {debugData.raw_sent.map(email => (
-                                                        <tr key={email.id}><td>{email.subject}</td><td>{email.to}</td><td>{formatDate(email.date)}</td></tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <pre style={{backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px', whiteSpace: 'pre-wrap'}}>
+                                        {JSON.stringify(debugData, null, 2)}
+                                    </pre>
                                 </div>
                             )}
                         </div>

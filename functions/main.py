@@ -26,17 +26,23 @@ CLIENT_SECRETS_FILE = os.path.join(script_dir, 'client_secret.json')
 with open(CLIENT_SECRETS_FILE) as f:
     CLIENT_ID = json.load(f)['web']['client_id']
 
-# Re-introducing hardcoded filter for simplicity and reliability
 IGNORED_SENDERS = ["soporte@west-ingenieria.cl"]
 IGNORED_SUBJECT_KEYWORDS = ["out of office", "respuesta automática", "auto-reply", "undeliverable", "delivery status notification"]
+CHILE_TZ = pytz.timezone('America/Santiago')
 
 def parse_date(date_string):
+    if not date_string:
+        return None
     try:
         dt = email.utils.parsedate_to_datetime(date_string)
-        return dt
+        if dt.tzinfo is None:
+            return CHILE_TZ.localize(dt)
+        else:
+            return dt.astimezone(CHILE_TZ)
     except (TypeError, ValueError):
         try:
-            return datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+            dt_iso = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+            return dt_iso.astimezone(CHILE_TZ)
         except ValueError:
             return None
 
@@ -76,38 +82,6 @@ def fetch_thread_ids(service, query):
         print(f"Error fetching thread IDs for query '{query}': {e}")
     return thread_ids
 
-def fetch_raw_list(service, query):
-    messages_list = []
-    page_token = None
-    try:
-        while True:
-            results = service.users().messages().list(userId='me', q=query, maxResults=100, pageToken=page_token).execute()
-            messages = results.get('messages', [])
-            if not messages: break
-            
-            batch = service.new_batch_http_request(callback=lambda id, resp, exc: messages_list.append(resp) if not exc else None)
-            for msg in messages:
-                batch.add(service.users().messages().get(userId='me', id=msg['id'], format='metadata', metadataHeaders=['Subject', 'From', 'To', 'Date']))
-            batch.execute()
-
-            page_token = results.get('nextPageToken')
-            if not page_token: break
-    except HttpError as e:
-        print(f"Error fetching raw list for query '{query}': {e}")
-    
-    processed_list = []
-    for msg in messages_list:
-        if msg and 'payload' in msg and 'headers' in msg['payload']:
-             processed_list.append({
-                'id': msg.get('id'),
-                'threadId': msg.get('threadId'),
-                'subject': get_header(msg['payload']['headers'], 'Subject'),
-                'from': get_header(msg['payload']['headers'], 'From'),
-                'to': get_header(msg['payload']['headers'], 'To'),
-                'date': get_header(msg['payload']['headers'], 'Date'),
-            })
-    return processed_list
-
 
 def get_credentials_from_request(request):
     auth_header = request.headers.get('Authorization')
@@ -131,36 +105,45 @@ def get_emails():
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
 
-        chile_tz = pytz.timezone('America/Santiago')
-        start_date_dt = chile_tz.localize(datetime.strptime(start_date_str, '%Y-%m-%d'))
-        end_date_dt = chile_tz.localize(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d').date(), time(23, 59, 59)))
-        start_timestamp = int(start_date_dt.timestamp())
-        end_timestamp = int(end_date_dt.timestamp())
-
-        query_date_parts = [f'after:{start_timestamp}', f'before:{end_timestamp}']
+        start_date_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date_dt = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1)
         
-        final_query = ' '.join(query_date_parts + ['in:inbox'])
+        start_date_q = start_date_dt.strftime('%Y/%m/%d')
+        end_date_q = end_date_dt.strftime('%Y/%m/%d')
+        
+        # --- CONSULTA FINAL CORREGIDA ---
+        # Ahora busca en el INBOX y excluye los correos internos.
+        final_query = f"after:{start_date_q} before:{end_date_q} -in:sent -from:west-ingenieria.cl in:inbox"
+
         threads_to_process = fetch_thread_ids(service, final_query)
 
         email_details = []
+        
+        start_date_dt_aware = CHILE_TZ.localize(start_date_dt)
+        end_date_dt_aware = CHILE_TZ.localize(datetime.combine(end_date_dt.date() - timedelta(days=1), time(23, 59, 59)))
 
         for thread_id in threads_to_process:
             try:
                 thread_details = service.users().threads().get(userId='me', id=thread_id, format='full').execute()
                 messages = thread_details['messages']
                 
-                messages_with_dates = [{'id': m['id'], 'date': parse_date(get_header(m['payload']['headers'], 'Date')), 'from': get_header(m['payload']['headers'], 'From'), 'subject': get_header(m['payload']['headers'], 'Subject'), 'payload': m['payload'], 'labelIds': m.get('labelIds', [])} for m in messages]
-                messages_with_dates.sort(key=lambda x: x['date'] if x['date'] else datetime.min.astimezone())
+                messages_with_dates = []
+                for m in messages:
+                    msg_date = parse_date(get_header(m['payload']['headers'], 'Date'))
+                    if msg_date:
+                        messages_with_dates.append({'id': m['id'], 'date': msg_date, 'from': get_header(m['payload']['headers'], 'From'), 'subject': get_header(m['payload']['headers'], 'Subject'), 'payload': m['payload'], 'labelIds': m.get('labelIds', [])})
+                
+                if not messages_with_dates: continue
+                messages_with_dates.sort(key=lambda x: x['date'])
                 
                 original_email_msg = messages_with_dates[0]
 
-                if not original_email_msg['date'] or not (start_date_dt <= original_email_msg['date'] <= end_date_dt):
+                if not (start_date_dt_aware <= original_email_msg['date'] <= end_date_dt_aware):
                     continue
                 
                 if any(keyword in original_email_msg['subject'].lower() for keyword in IGNORED_SUBJECT_KEYWORDS):
                     continue
-
-                # Re-introducing the hardcoded sender filter
+                
                 sender_email = email.utils.parseaddr(original_email_msg['from'])[1]
                 if sender_email in IGNORED_SENDERS:
                     continue
@@ -193,66 +176,40 @@ def get_emails():
                 for detail in email_details:
                     if detail['thread_id'] in thread_ids: detail['is_duplicate'] = True
         
-        # Re-introducing debug list fetching
-        debug_inbox_query = ' '.join(query_date_parts + ['in:inbox'])
-        debug_sent_query = ' '.join(query_date_parts + ['in:sent'])
-        raw_inbox_list = fetch_raw_list(service, debug_inbox_query)
-        raw_sent_list = fetch_raw_list(service, debug_sent_query)
-        
         debug_data = {
-            "raw_inbox": raw_inbox_list,
-            "raw_sent": raw_sent_list
+            "final_query_sent_to_gmail": final_query,
+            "total_threads_found_by_query": len(threads_to_process),
+            "final_emails_returned_to_frontend": len(email_details)
         }
         
-        return jsonify({"status": "success", "data": {"details": email_details, "late_replies": {}, "debug_data": debug_data}})
+        return jsonify({"status": "success", "data": {"details": email_details, "debug_data": debug_data}})
     except HttpError as e:
-        if e.resp.status == 401:
-            return jsonify({"error": "Authorization token has expired or been revoked."}), 401
-        return jsonify({"error": f"An API error occurred: {str(e)}"}), 500
+        if e.resp.status == 401: return jsonify({"error": "Authorization token has expired or been revoked."}), 401
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
     except Exception as e: return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @app.route('/api/verify_reply', methods=['POST'])
 def verify_reply():
     if request.method == 'OPTIONS': return '', 204
-    
     try:
         credentials = get_credentials_from_request(request)
-        if not credentials:
-            return jsonify({"error": "Authorization token missing or invalid"}), 401
-
+        if not credentials: return jsonify({"error": "Authorization token missing or invalid"}), 401
         service = build('gmail', 'v1', credentials=credentials)
-        
         data = request.get_json()
-        original_sender = data.get('sender')
-        subject = data.get('subject')
-        end_date_str = data.get('endDate')
-
-        if not all([original_sender, subject, end_date_str]):
-            return jsonify({"error": "Missing sender, subject, or end date for verification"}), 400
-
-        chile_tz = pytz.timezone('America/Santiago')
-        end_date_dt = chile_tz.localize(datetime.strptime(end_date_str, '%Y-%m-%d'))
+        original_sender, subject, end_date_str = data.get('sender'), data.get('subject'), data.get('endDate')
+        if not all([original_sender, subject, end_date_str]): return jsonify({"error": "Missing params"}), 400
+        end_date_dt = CHILE_TZ.localize(datetime.strptime(end_date_str, '%Y-%m-%d'))
         extended_end_date = end_date_dt + timedelta(days=2)
-        extended_timestamp = int(extended_end_date.timestamp())
-
         sender_email = email.utils.parseaddr(original_sender)[1]
-        
-        query = f'in:sent to:"{sender_email}" subject:"{subject}" before:{extended_timestamp}'
+        query = f'in:sent to:"{sender_email}" subject:"{subject}" before:{int(extended_end_date.timestamp())}'
         results = service.users().messages().list(userId='me', q=query, maxResults=1).execute()
-        
         if results.get('messages'):
             msg_id = results['messages'][0]['id']
             message = service.users().messages().get(userId='me', id=msg_id).execute()
-            reply_date_str = get_header(message['payload']['headers'], 'Date')
-            reply_date = parse_date(reply_date_str)
+            reply_date = parse_date(get_header(message['payload']['headers'], 'Date'))
             return jsonify({"found": True, "reply_date": reply_date.isoformat() if reply_date else None})
         else:
             return jsonify({"found": False})
-            
-    except HttpError as e:
-        if e.resp.status == 401:
-            return jsonify({"error": "Authorization token has expired or been revoked."}), 401
-        return jsonify({"error": f"An API error occurred: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 

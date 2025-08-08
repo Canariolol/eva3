@@ -19,7 +19,7 @@ import { GlobalProvider } from './context/GlobalContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrowserRouter as Router } from 'react-router-dom';
 
-const googleClientId = "636042825570-a6bpcvdg5p5agdunbir9q9o9bdifk13s.apps.googleusercontent.com";
+const googleClientId = "176410237676-268dlt1mn98cl3q91dlkr9rsrnfe9c48.apps.googleusercontent.com";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
