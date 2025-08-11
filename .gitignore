@@ -40,3 +40,4 @@ src/NO USAR firebase-instances.js NO USAR
 .env.cathywest
 .env.example
 functions/main copy.py
+.env.testing

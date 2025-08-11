@@ -14,7 +14,10 @@
     "deploy:2080": "firebase use 2080 && npm run build:2080 && firebase deploy --only hosting:2080",
     "//--- Scripts de Despliegue de Backend (Firestore) ---//": "",
     "deploy-firestore:cathywest": "firebase use cathywest && firebase deploy --only firestore",
-    "deploy-firestore:2080": "firebase use 2080 && firebase deploy --only firestore"
+    "deploy-firestore:2080": "firebase use 2080 && firebase deploy --only firestore",
+    "//--- Scripts de Pruebas ---//": "",
+    "build:testing": "vite build --mode testing",
+    "deploy:testing": "firebase use testing && npm run build:testing && firebase deploy --only hosting:testing"
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",

@@ -35,7 +35,23 @@
         }
       ],
       "headers": [{"source": "**", "headers": [{"key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups"}]}]
-    }
+    },
+    {
+      "target": "testing",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "gmail_api_handler"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [{"source": "**", "headers": [{"key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups"}]}]
+  }
   ],
   "functions": [
     {

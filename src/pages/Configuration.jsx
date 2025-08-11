@@ -21,7 +21,7 @@ const Configuration = () => {
         criteria, 
         nonEvaluableCriteria, 
         aptitudeSubsections, 
-        execuaiveFields, 
+        executiveFields, 
         evaluationSections,
         customTabs,
         headerInfo,
