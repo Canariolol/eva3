@@ -14,7 +14,7 @@ import {
 const getScaleDomain = (scaleType) => {
     switch (scaleType) {
         case '1-5': return [0, 5];
-        case 'binary': return [0, 10];
+        case 'binary': return [0, 1];
         case 'percentage': return [0, 100];
         default: return [0, 10];
     }
@@ -28,6 +28,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
     
     const uniqueScales = useMemo(() => new Set(sectionEvaluations.map(e => e.scaleType || '1-10')), [sectionEvaluations]);
     const mustNormalize = uniqueScales.size > 1;
+    const scaleType = mustNormalize ? 'percentage' : uniqueScales.values().next().value;
     
     const processedEvaluations = useMemo(() => {
         if (!mustNormalize) return sectionEvaluations;
@@ -40,7 +41,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
         }));
     }, [sectionEvaluations, mustNormalize]);
 
-    const chartDomain = mustNormalize ? [0, 100] : getScaleDomain(uniqueScales.values().next().value);
+    const chartDomain = getScaleDomain(scaleType);
 
     const handleChartClick = (data) => {
         if (!hasSubsections || !data || !data.activePayload || !data.activePayload.length) return;
@@ -105,7 +106,7 @@ const DashboardSection = ({ section, evaluations, criteriaConfig, nonEvaluableCr
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={barData} onClick={handleChartClick} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={chartDomain} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="Puntaje Promedio" fill={section.color} />
+                            <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }}/><YAxis domain={chartDomain} /><Tooltip content={<CustomTooltip scaleType={scaleType} />} /><Bar dataKey="Puntaje Promedio" fill={section.color} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

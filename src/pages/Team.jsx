@@ -116,6 +116,15 @@ const Team = () => {
         setSearchParams(currentParams);
     };
     
+    const getScaleDomain = (scaleType) => {
+        switch (scaleType) {
+            case '1-5': return [0, 5];
+            case 'binary': return [0, 10];
+            case 'percentage': return [0, 100];
+            default: return [0, 10];
+        }
+    };
+    
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
 
@@ -152,7 +161,9 @@ const Team = () => {
                 Promedio: scores.reduce((a, b) => a + b, 0) / scores.length,
             }));
             
-            return { ...section, chartData };
+            const yAxisDomain = getScaleDomain(section.scaleType);
+            
+            return { ...section, chartData, yAxisDomain };
         }).filter(Boolean);
 
 
@@ -171,8 +182,8 @@ const Team = () => {
                                 <BarChart data={section.chartData} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} />
-                                    <YAxis domain={[0, 10]} />
-                                    <Tooltip content={<CustomTooltip />}/>
+                                    <YAxis domain={section.yAxisDomain} />
+                                    <Tooltip content={<CustomTooltip scaleType={section.scaleType} />}/>
                                     <Bar dataKey="Promedio" fill={section.color || '#8884d8'} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -195,6 +206,18 @@ const Team = () => {
                 <ul className="config-list">
                     {filteredEvals.map(ev => {
                         const sectionConfig = evaluationSections.find(s => s.name === ev.section);
+                        const isBinary = sectionConfig?.scaleType === 'binary';
+                        const scores = Object.values(ev.scores);
+                        let finalScore;
+
+                        if (isBinary) {
+                            const compliantCount = scores.filter(s => s === 10).length;
+                            finalScore = scores.length > 0 ? `${((compliantCount / scores.length) * 100).toFixed(0)}%` : 'N/A';
+                        } else {
+                            const sum = scores.reduce((a, b) => a + b, 0);
+                            finalScore = scores.length > 0 ? (sum / scores.length).toFixed(2) : 'N/A';
+                        }
+                        
                         return (
                             <li key={ev.id} className="config-list-item" onClick={() => handleSelectEvaluation(ev)}>
                                 <div>
@@ -205,7 +228,7 @@ const Team = () => {
                                     </span>
                                 </div>
                                 <span className="evaluation-avg">
-                                    {(Object.values(ev.scores).reduce((a, b) => a + b, 0) / Object.values(ev.scores).length).toFixed(2)}
+                                    {finalScore}
                                 </span>
                             </li>
                         )
@@ -218,6 +241,7 @@ const Team = () => {
     const renderEvaluationDetailModal = () => {
         if (!selectedEvaluation) return null;
         const sectionConfig = evaluationSections.find(s => s.name === selectedEvaluation.section);
+        const isBinary = sectionConfig?.scaleType === 'binary';
 
         return (
             <Modal onClose={handleCloseEvaluationModal}>
@@ -232,7 +256,7 @@ const Team = () => {
                         {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
                             <li key={name} className='config-list-item'>
                                 <span>{name}</span>
-                                <strong>{score}</strong>
+                                <strong>{isBinary ? (score === 10 ? 'Cumple' : 'No Cumple') : score}</strong>
                             </li>
                         ))}
                     </ul>

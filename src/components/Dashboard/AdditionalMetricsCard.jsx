@@ -39,6 +39,15 @@ const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverag
         handleCloseModal();
     };
 
+    const isBinaryScale = evaluations.length > 0 && evaluations[0].scaleType === 'binary';
+    
+    const formatScore = (score) => {
+        if (isBinaryScale) {
+            return `${score.toFixed(0)}%`;
+        }
+        return score.toFixed(2);
+    };
+
     return (
         <>
             <div className="card" style={{flex: 1, minWidth: '400px'}}>
@@ -91,7 +100,7 @@ const AdditionalMetricsCard = ({ title, evaluations, nonEvaluable, overallAverag
                         <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingLeft: '1rem' }}>
                             <p style={{ margin: 0, fontSize: '1.1rem', color: '#6c757d', textAlign: 'center' }}>Promedio General</p>
                             <p style={{ margin: 0, fontSize: '2.8rem', fontWeight: 'bold', lineHeight: 1.2, color: color }}>
-                                {overallAverage.toFixed(2)}
+                                {formatScore(overallAverage)}
                             </p>
                         </div>
                     </>
