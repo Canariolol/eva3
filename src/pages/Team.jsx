@@ -59,6 +59,9 @@ const Team = () => {
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
     const [sectionFilter, setSectionFilter] = useState('All');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedEvaluation, setEditedEvaluation] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const executiveId = searchParams.get('executiveId');
@@ -114,6 +117,78 @@ const Team = () => {
         const currentParams = Object.fromEntries(searchParams.entries());
         delete currentParams.evaluationId;
         setSearchParams(currentParams);
+    };
+
+    const handleEditEvaluation = () => {
+        setIsEditing(true);
+        setEditedEvaluation({
+            ...selectedEvaluation,
+            scores: { ...selectedEvaluation.scores },
+            nonEvaluableData: selectedEvaluation.nonEvaluableData ? { ...selectedEvaluation.nonEvaluableData } : {},
+            observations: selectedEvaluation.observations || ''
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditedEvaluation(null);
+    };
+
+    const handleScoreChange = (criterionName, newScore) => {
+        setEditedEvaluation(prev => ({
+            ...prev,
+            scores: {
+                ...prev.scores,
+                [criterionName]: parseFloat(newScore)
+            }
+        }));
+    };
+
+    const handleNonEvaluableDataChange = (fieldName, value) => {
+        setEditedEvaluation(prev => ({
+            ...prev,
+            nonEvaluableData: {
+                ...prev.nonEvaluableData,
+                [fieldName]: value
+            }
+        }));
+    };
+
+    const handleObservationsChange = (value) => {
+        setEditedEvaluation(prev => ({
+            ...prev,
+            observations: value
+        }));
+    };
+
+    const handleSaveEvaluation = async () => {
+        if (!editedEvaluation) return;
+
+        setIsSaving(true);
+        try {
+            const evaluationRef = doc(db, 'evaluations', selectedEvaluation.id);
+            await updateDoc(evaluationRef, {
+                scores: editedEvaluation.scores,
+                nonEvaluableData: editedEvaluation.nonEvaluableData,
+                observations: editedEvaluation.observations,
+                lastModified: new Date()
+            });
+
+            // Actualizar el estado local
+            const updatedEvaluation = { ...selectedEvaluation, ...editedEvaluation };
+            setSelectedEvaluation(updatedEvaluation);
+            
+            // Refrescar los datos del contexto
+            await refreshData();
+            
+            setIsEditing(false);
+            setEditedEvaluation(null);
+        } catch (error) {
+            console.error('Error al guardar la evaluación:', error);
+            alert('Error al guardar los cambios. Por favor, inténtalo de nuevo.');
+        } finally {
+            setIsSaving(false);
+        }
     };
     
     const getScaleDomain = (scaleType) => {
@@ -247,6 +322,14 @@ const Team = () => {
             <Modal onClose={handleCloseEvaluationModal}>
                 <div className="evaluation-detail-modal">
                     <h2>Detalle de la Evaluación</h2>
+                    {!isEditing && (
+                            <button 
+                                onClick={handleEditEvaluation}
+                                className="btn btn-primary"
+                            >
+                                ✏️ Editar
+                            </button>
+                        )}
                     <p><strong>Fecha de Evaluación:</strong> {formatDisplayValue(selectedEvaluation.evaluationDate)}</p>
                     {sectionConfig?.includeManagementDate && selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {formatDisplayValue(selectedEvaluation.managementDate)}</p>}
                     <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
@@ -256,7 +339,18 @@ const Team = () => {
                         {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
                             <li key={name} className='config-list-item'>
                                 <span>{name}</span>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="10"
+                                        step="0.1"
+                                        value={editedEvaluation?.scores[name] || score}
+                                        onChange={(e) => handleScoreChange(name, e.target.value)}
+                                    />
+                                ) : (
                                 <strong>{isBinary ? (score === 10 ? 'Cumple' : 'No Cumple') : score}</strong>
+                                    )}
                             </li>
                         ))}
                     </ul>
@@ -268,20 +362,55 @@ const Team = () => {
                             {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
                                 <li key={name} className='config-list-item'>
                                     <span>{name}</span>
-                                    <span>{formatDisplayValue(value)}</span>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editedEvaluation?.nonEvaluableData[name] || value}
+                                            onChange={(e) => handleNonEvaluableDataChange(name, e.target.value)}
+                                        />
+                                    ) : (
+                                        <span>{formatDisplayValue(value)}</span>
+                                    )}
                                 </li>
                             ))}
                             </ul>
                         </>
                     )}
 
-                    {selectedEvaluation.observations && (
+{selectedEvaluation.observations && (
                         <>
                             <h4>Observaciones</h4>
                             <div className="observations-box">
-                                <p>{selectedEvaluation.observations}</p>
+                                {isEditing ? (
+                                    <textarea
+                                        value={editedEvaluation?.observations || selectedEvaluation.observations}
+                                        onChange={(e) => handleObservationsChange(e.target.value)}
+                                        placeholder="Ingresa las observaciones..."
+                                    />
+                                ) : (
+                                    <p>{selectedEvaluation.observations}</p>
+                                )}
                             </div>
                         </>
+                    )}
+
+                    {isEditing && (
+                        <div className="edit-actions">
+                            <button 
+                                onClick={handleCancelEdit}
+                                className="btn btn-secondary"
+                                disabled={isSaving}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleSaveEvaluation}
+                                className="btn btn-primary"
+                                disabled={isSaving}
+                            >
+                                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
                     )}
                 </div>
             </Modal>
