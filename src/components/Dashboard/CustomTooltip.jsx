@@ -3,15 +3,15 @@ import React from 'react';
 const CustomTooltip = ({ active, payload, scaleType }) => {
     if (active && payload && payload.length) {
         const barColor = payload[0].fill;
-        const value = payload[0].value;
+        const data = payload[0].payload;
+        const scaleType = data.scaleType || '1-10';
+        
         let displayValue;
-
         if (scaleType === 'binary') {
-            displayValue = value === 1 ? 'Cumple' : 'No Cumple';
+            displayValue = `${payload[0].value.toFixed(1)}%`;
         } else {
-            displayValue = value.toFixed(2);
+            displayValue = payload[0].value.toFixed(2);
         }
-
         return (
             <div className="recharts-custom-tooltip" style={{ border: `1px solid ${barColor}` }}>
                 <p className="recharts-tooltip-label" style={{ color: barColor, borderBottom: `1px solid ${barColor}50` }}>

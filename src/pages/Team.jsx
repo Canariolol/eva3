@@ -159,7 +159,12 @@ const Team = () => {
     };
     
     const truncateName = (name) => name.split(' ').length > 1 ? `${name.split(' ')[0]}...` : name;
-    const getScaleDomain = (scaleType) => ({'1-5': [0, 5], 'binary': [0, 10], 'percentage': [0, 100]})[scaleType] || [0, 10];
+    const getScaleDomain = (scaleType) => {
+        if (scaleType === 'binary' || scaleType === 'percentage') return [0, 100];
+
+        if (scaleType === '1-5') return [0, 5];
+        return [0, 10]; // Default
+    };
 
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
@@ -177,7 +182,16 @@ const Team = () => {
                 });
                 return acc;
             }, {});
-            const chartData = Object.entries(criteria).map(([name, scores]) => ({ name, shortName: truncateName(name), Promedio: scores.reduce((a, b) => a + b, 0) / scores.length }));
+            // For binary scale, calculate average as percentage
+           
+            const chartData = Object.entries(criteria).map(([name, scores]) => 
+                ({ name, shortName: truncateName(name), 
+                   Promedio: section.scaleType === 'binary' 
+                        ? (scores.filter(score => score === 10).length / scores.length) * 100
+                        : scores.reduce(
+                    (a, b) => a + b, 0) / scores.length 
+                }));
+            
             return { ...section, chartData, yAxisDomain: getScaleDomain(section.scaleType) };
         }).filter(Boolean);
 
@@ -186,7 +200,17 @@ const Team = () => {
                 <h2>{selectedExecutive.Nombre}</h2>
                 <p><strong>Cargo:</strong> {selectedExecutive.Cargo} &nbsp;|&nbsp; <strong>Área:</strong> {selectedExecutive.Área}</p>
                 <h3>Rendimiento General</h3>
-                <div className="performance-charts">{sectionsWithData.map(s => (<div key={s.id}><h4>{s.name}</h4><ResponsiveContainer width="100%" height={300}><BarChart data={s.chartData} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} /><YAxis domain={s.yAxisDomain} /><Tooltip content={<CustomTooltip scaleType={s.scaleType} />} /><Bar dataKey="Promedio" fill={s.color || '#8884d8'} /></BarChart></ResponsiveContainer></div>))}</div>
+                <div className="performance-charts">{sectionsWithData.map(s => 
+                    (<div key={s.id}><h4>{s.name}</h4>
+                    <ResponsiveContainer width="100%" height={300}><BarChart data={s.chartData} margin={
+                        { top: 5, right: 20, left: 20, bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={
+                                { fontSize: 12 }} /><YAxis domain={s.yAxisDomain} tickFormatter={(value) => s.scaleType === 'binary' || s.scaleType === 'percentage' ? `${value}%` : value} />
+                                <YAxis domain={s.yAxisDomain} />
+                                <Tooltip content={<CustomTooltip scaleType={s.scaleType} />} />
+                                <Bar dataKey="Promedio" fill={s.color || '#8884d8'} /></BarChart>
+                                </ResponsiveContainer></div>))}</div>
                 <div className="evaluation-history-header"><h3>Historial de Evaluaciones</h3><select className="form-control" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} style={{width: '250px'}}><option value="All">Mostrar Todas</option>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
                 <ul className="config-list">{filteredEvals.map(ev => {
                     const sectionConfig = evaluationSections.find(s => s.name === ev.section);
