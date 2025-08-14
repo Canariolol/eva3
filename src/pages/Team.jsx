@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGlobalContext } from '../context/GlobalContext';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import CustomTooltip from '../components/Dashboard/CustomTooltip';
+import DynamicScoreSelector from '../components/DynamicScoreSelector';
 import './Team.css';
 
 const Modal = ({ children, onClose, size = 'default' }) => {
     const [isClosing, setIsClosing] = useState(false);
-
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setIsClosing(true);
         setTimeout(() => onClose(), 300);
-    };
-    
+    }, [onClose]);
     return (
         <div className={`modal-backdrop ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
             <div className={`modal-content ${size === 'large' ? 'modal-large' : ''}`} onClick={(e) => e.stopPropagation()}>
@@ -24,44 +25,32 @@ const Modal = ({ children, onClose, size = 'default' }) => {
     );
 };
 
-// Helper function to format various data types for display
 const formatDisplayValue = (value) => {
-    if (!value) return '';
-
-    let date;
-    // Check if it's a Firestore timestamp
-    if (typeof value === 'object' && value.seconds) {
-        date = new Date(value.seconds * 1000);
-    } 
-    // Check if it's already a JavaScript Date object
-    else if (value instanceof Date) {
-        date = value;
-    } 
-    // If it's not a date-like object, return it as is
-    else {
-        return value;
+    if (value === null || typeof value === 'undefined') return 'N/A';
+    if (typeof value === 'object' && value.seconds) { // Firestore Timestamp
+        const date = new Date(value.seconds * 1000);
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
-
-    // Check if a specific time was set (other than midnight)
-    if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
-        return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (value instanceof Date) { // JavaScript Date
+        return value.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
-    // Otherwise, just show the date
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return value.toString(); // Other types
 };
 
 
 const Team = () => {
-    const { executives, evaluations, evaluationSections } = useGlobalContext();
+    const { executives, evaluations, evaluationSections, nonEvaluableCriteria, refreshData } = useGlobalContext();
     const { userRole, executiveData } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [selectedExecutive, setSelectedExecutive] = useState(null);
     const [selectedEvaluation, setSelectedEvaluation] = useState(null);
     const [sectionFilter, setSectionFilter] = useState('All');
+    
     const [isEditing, setIsEditing] = useState(false);
-    const [editedEvaluation, setEditedEvaluation] = useState(null);
+    const [editableEvaluation, setEditableEvaluation] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState('');
 
     useEffect(() => {
         const executiveId = searchParams.get('executiveId');
@@ -74,381 +63,208 @@ const Team = () => {
 
         if (executiveId && executives.length > 0) {
             const execToSelect = executives.find(e => e.id === executiveId);
-            
-            if (userRole === 'executive' && execToSelect?.id !== executiveData?.id) {
-                setSelectedExecutive(null);
-            } else {
-                setSelectedExecutive(execToSelect || null);
-            }
+            setSelectedExecutive(userRole === 'executive' && execToSelect?.id !== executiveData?.id ? null : execToSelect || null);
         } else {
             setSelectedExecutive(null);
         }
         
-        if (evaluationId && evaluations.length > 0) {
-            const evalToSelect = evaluations.find(e => e.id === evaluationId);
-            setSelectedEvaluation(evalToSelect || null);
+        const evalToSelect = evaluationId && evaluations.length > 0 ? evaluations.find(e => e.id === evaluationId) : null;
+        setSelectedEvaluation(evalToSelect);
+        if (evalToSelect) {
+            setEditableEvaluation(JSON.parse(JSON.stringify(evalToSelect)));
         } else {
-            setSelectedEvaluation(null);
+            setIsEditing(false);
         }
     }, [searchParams, executives, evaluations, userRole, executiveData, setSearchParams]);
-    
-    const truncateName = (name) => {
-        const words = name.split(' ');
-        return words.length > 1 ? `${words[0]}...` : name;
-    };
 
     const handleExecutiveCardClick = (executive) => {
-        const isClickable = userRole === 'admin' || (userRole === 'executive' && executive.id === executiveData?.id);
-        if (isClickable) {
+        if (userRole === 'admin' || (userRole === 'executive' && executive.id === executiveData?.id)) {
             setSearchParams({ executiveId: executive.id });
         }
     };
+    
+    const handleCloseExecutiveModal = useCallback(() => setSearchParams({}), [setSearchParams]);
+    const handleSelectEvaluation = useCallback((evaluation) => setSearchParams(prev => ({ ...Object.fromEntries(prev.entries()), evaluationId: evaluation.id })), [setSearchParams]);
+    
+    const handleCloseEvaluationModal = useCallback(() => {
+        const newParams = Object.fromEntries(searchParams.entries());
+        delete newParams.evaluationId;
+        setSearchParams(newParams);
+        setIsEditing(false);
+        setSaveMessage('');
+    }, [searchParams, setSearchParams]);
 
-    const handleCloseExecutiveModal = () => {
-        setSearchParams({});
-    };
-
-    const handleSelectEvaluation = (evaluation) => {
-        const currentParams = Object.fromEntries(searchParams.entries());
-        setSearchParams({ ...currentParams, evaluationId: evaluation.id });
-    };
-
-    const handleCloseEvaluationModal = () => {
-        const currentParams = Object.fromEntries(searchParams.entries());
-        delete currentParams.evaluationId;
-        setSearchParams(currentParams);
-    };
-
-    const handleEditEvaluation = () => {
+    const handleEditClick = () => {
+        setEditableEvaluation(JSON.parse(JSON.stringify(selectedEvaluation)));
         setIsEditing(true);
-        setEditedEvaluation({
-            ...selectedEvaluation,
-            scores: { ...selectedEvaluation.scores },
-            nonEvaluableData: selectedEvaluation.nonEvaluableData ? { ...selectedEvaluation.nonEvaluableData } : {},
-            observations: selectedEvaluation.observations || ''
-        });
     };
-
+    
     const handleCancelEdit = () => {
         setIsEditing(false);
-        setEditedEvaluation(null);
+        setSaveMessage('');
     };
 
     const handleScoreChange = (criterionName, newScore) => {
-        setEditedEvaluation(prev => ({
+        setEditableEvaluation(prev => ({
             ...prev,
-            scores: {
-                ...prev.scores,
-                [criterionName]: parseFloat(newScore)
-            }
+            scores: { ...prev.scores, [criterionName]: newScore }
         }));
     };
 
-    const handleNonEvaluableDataChange = (fieldName, value) => {
-        setEditedEvaluation(prev => ({
+    const handleNonEvaluableChange = (fieldName, value) => {
+        setEditableEvaluation(prev => ({
             ...prev,
-            nonEvaluableData: {
-                ...prev.nonEvaluableData,
-                [fieldName]: value
-            }
+            nonEvaluableData: { ...prev.nonEvaluableData, [fieldName]: value }
         }));
     };
 
-    const handleObservationsChange = (value) => {
-        setEditedEvaluation(prev => ({
-            ...prev,
-            observations: value
-        }));
+    const handleObservationsChange = (observations) => {
+        setEditableEvaluation(prev => ({ ...prev, observations }));
     };
 
-    const handleSaveEvaluation = async () => {
-        if (!editedEvaluation) return;
-
+    const handleSaveChanges = async () => {
+        if (!editableEvaluation) return;
         setIsSaving(true);
+        setSaveMessage('');
+
+        // Prepare data for Firestore, converting date strings back to Date objects if needed
+        const dataToSave = { ...editableEvaluation };
+        if (dataToSave.nonEvaluableData) {
+            for (const key in dataToSave.nonEvaluableData) {
+                const criterion = nonEvaluableCriteria.find(c => c.name === key);
+                const value = dataToSave.nonEvaluableData[key];
+                if (criterion?.inputType === 'date' && typeof value === 'string' && value) {
+                    dataToSave.nonEvaluableData[key] = new Date(value + 'T00:00:00'); // Prevent timezone shifts
+                }
+            }
+        }
+        
         try {
             const evaluationRef = doc(db, 'evaluations', selectedEvaluation.id);
             await updateDoc(evaluationRef, {
-                scores: editedEvaluation.scores,
-                nonEvaluableData: editedEvaluation.nonEvaluableData,
-                observations: editedEvaluation.observations,
-                lastModified: new Date()
+                scores: dataToSave.scores,
+                nonEvaluableData: dataToSave.nonEvaluableData,
+                observations: dataToSave.observations,
             });
-
-            // Actualizar el estado local
-            const updatedEvaluation = { ...selectedEvaluation, ...editedEvaluation };
-            setSelectedEvaluation(updatedEvaluation);
-            
-            // Refrescar los datos del contexto
             await refreshData();
-            
             setIsEditing(false);
-            setEditedEvaluation(null);
+            setSaveMessage('¡Evaluación actualizada con éxito!');
+            setTimeout(() => setSaveMessage(''), 3000);
         } catch (error) {
-            console.error('Error al guardar la evaluación:', error);
-            alert('Error al guardar los cambios. Por favor, inténtalo de nuevo.');
+            console.error("Error updating evaluation:", error);
+            setSaveMessage('Error al guardar. Inténtalo de nuevo.');
         } finally {
             setIsSaving(false);
         }
     };
     
-    const getScaleDomain = (scaleType) => {
-        switch (scaleType) {
-            case '1-5': return [0, 5];
-            case 'binary': return [0, 10];
-            case 'percentage': return [0, 100];
-            default: return [0, 10];
-        }
-    };
-    
+    const truncateName = (name) => name.split(' ').length > 1 ? `${name.split(' ')[0]}...` : name;
+    const getScaleDomain = (scaleType) => ({'1-5': [0, 5], 'binary': [0, 10], 'percentage': [0, 100]})[scaleType] || [0, 10];
+
     const renderExecutiveDetails = () => {
         if (!selectedExecutive) return null;
-
         const executiveEvals = evaluations.filter(e => e.executive === selectedExecutive.Nombre);
-        
-        const filteredEvals = sectionFilter === 'All' 
-            ? executiveEvals 
-            : executiveEvals.filter(e => e.section === sectionFilter);
-
-        if (executiveEvals.length === 0) {
-            return (
-                <div className="executive-details-modal">
-                    <h2>{selectedExecutive.Nombre}</h2>
-                    <p>No hay evaluaciones registradas para este ejecutivo.</p>
-                </div>
-            );
-        }
+        const filteredEvals = sectionFilter === 'All' ? executiveEvals : executiveEvals.filter(e => e.section === sectionFilter);
+        if (executiveEvals.length === 0) return <div className="executive-details-modal"><h2>{selectedExecutive.Nombre}</h2><p>No hay evaluaciones registradas.</p></div>;
         
         const sectionsWithData = evaluationSections.map(section => {
             const evals = executiveEvals.filter(e => e.section === section.name);
             if (evals.length === 0) return null;
-
-            const criteria = {};
-            evals.forEach(ev => {
+            const criteria = evals.reduce((acc, ev) => {
                 Object.entries(ev.scores).forEach(([name, score]) => {
-                    if (!criteria[name]) criteria[name] = [];
-                    criteria[name].push(score);
+                    if (!acc[name]) acc[name] = [];
+                    acc[name].push(score);
                 });
-            });
-
-            const chartData = Object.entries(criteria).map(([name, scores]) => ({
-                name,
-                shortName: truncateName(name),
-                Promedio: scores.reduce((a, b) => a + b, 0) / scores.length,
-            }));
-            
-            const yAxisDomain = getScaleDomain(section.scaleType);
-            
-            return { ...section, chartData, yAxisDomain };
+                return acc;
+            }, {});
+            const chartData = Object.entries(criteria).map(([name, scores]) => ({ name, shortName: truncateName(name), Promedio: scores.reduce((a, b) => a + b, 0) / scores.length }));
+            return { ...section, chartData, yAxisDomain: getScaleDomain(section.scaleType) };
         }).filter(Boolean);
-
 
         return (
             <div className="executive-details-modal">
                 <h2>{selectedExecutive.Nombre}</h2>
-                <p><strong>Cargo:</strong> {selectedExecutive.Cargo}</p>
-                <p><strong>Área:</strong> {selectedExecutive.Área}</p>
-                
+                <p><strong>Cargo:</strong> {selectedExecutive.Cargo} &nbsp;|&nbsp; <strong>Área:</strong> {selectedExecutive.Área}</p>
                 <h3>Rendimiento General</h3>
-                <div className="performance-charts">
-                    {sectionsWithData.map(section => (
-                        <div key={section.id}>
-                            <h4>{section.name}</h4>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={section.chartData} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} />
-                                    <YAxis domain={section.yAxisDomain} />
-                                    <Tooltip content={<CustomTooltip scaleType={section.scaleType} />}/>
-                                    <Bar dataKey="Promedio" fill={section.color || '#8884d8'} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="evaluation-history-header">
-                    <h3>Historial de Evaluaciones</h3>
-                    <select 
-                        className="form-control" 
-                        value={sectionFilter} 
-                        onChange={(e) => setSectionFilter(e.target.value)}
-                        style={{width: '250px'}}
-                    >
-                        <option value="All">Mostrar Todas</option>
-                        {evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                    </select>
-                </div>
-                <ul className="config-list">
-                    {filteredEvals.map(ev => {
-                        const sectionConfig = evaluationSections.find(s => s.name === ev.section);
-                        const isBinary = sectionConfig?.scaleType === 'binary';
-                        const scores = Object.values(ev.scores);
-                        let finalScore;
-
-                        if (isBinary) {
+                <div className="performance-charts">{sectionsWithData.map(s => (<div key={s.id}><h4>{s.name}</h4><ResponsiveContainer width="100%" height={300}><BarChart data={s.chartData} margin={{ top: 5, right: 20, left: 20, bottom: 60 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="shortName" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 12 }} /><YAxis domain={s.yAxisDomain} /><Tooltip content={<CustomTooltip scaleType={s.scaleType} />} /><Bar dataKey="Promedio" fill={s.color || '#8884d8'} /></BarChart></ResponsiveContainer></div>))}</div>
+                <div className="evaluation-history-header"><h3>Historial de Evaluaciones</h3><select className="form-control" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} style={{width: '250px'}}><option value="All">Mostrar Todas</option>{evaluationSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
+                <ul className="config-list">{filteredEvals.map(ev => {
+                    const sectionConfig = evaluationSections.find(s => s.name === ev.section);
+                    const scores = Object.values(ev.scores);
+                    let finalScore = 'N/A';
+                    if (scores.length > 0) {
+                        if (sectionConfig?.scaleType === 'binary') {
                             const compliantCount = scores.filter(s => s === 10).length;
-                            finalScore = scores.length > 0 ? `${((compliantCount / scores.length) * 100).toFixed(0)}%` : 'N/A';
+                            finalScore = `${((compliantCount / scores.length) * 100).toFixed(0)}%`;
                         } else {
-                            const sum = scores.reduce((a, b) => a + b, 0);
-                            finalScore = scores.length > 0 ? (sum / scores.length).toFixed(2) : 'N/A';
+                            finalScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
                         }
-                        
-                        return (
-                            <li key={ev.id} className="config-list-item" onClick={() => handleSelectEvaluation(ev)}>
-                                <div>
-                                    <strong>{ev.section}</strong>
-                                    <span className="evaluation-dates">
-                                        Fecha Evaluación: {formatDisplayValue(ev.evaluationDate)}
-                                        {sectionConfig?.includeManagementDate && ev.managementDate && ` | Fecha Gestión: ${formatDisplayValue(ev.managementDate)}`}
-                                    </span>
-                                </div>
-                                <span className="evaluation-avg">
-                                    {finalScore}
-                                </span>
-                            </li>
-                        )
-                    })}
-                </ul>
+                    }
+                    return (<li key={ev.id} className="config-list-item" onClick={() => handleSelectEvaluation(ev)}><div><strong>{ev.section}</strong><span className="evaluation-dates">Fecha: {formatDisplayValue(ev.evaluationDate)}{sectionConfig?.includeManagementDate && ev.managementDate && ` | Gestión: ${formatDisplayValue(ev.managementDate)}`}</span></div><span className="evaluation-avg">{finalScore}</span></li>);
+                })}</ul>
             </div>
         );
     };
 
     const renderEvaluationDetailModal = () => {
-        if (!selectedEvaluation) return null;
+        if (!selectedEvaluation || !editableEvaluation) return null;
         const sectionConfig = evaluationSections.find(s => s.name === selectedEvaluation.section);
         const isBinary = sectionConfig?.scaleType === 'binary';
-
+        
         return (
             <Modal onClose={handleCloseEvaluationModal}>
                 <div className="evaluation-detail-modal">
-                    <h2>Detalle de la Evaluación</h2>
-                    {!isEditing && (
-                            <button 
-                                onClick={handleEditEvaluation}
-                                className="btn btn-primary"
-                            >
-                                ✏️ Editar
-                            </button>
-                        )}
-                    <p><strong>Fecha de Evaluación:</strong> {formatDisplayValue(selectedEvaluation.evaluationDate)}</p>
-                    {sectionConfig?.includeManagementDate && selectedEvaluation.managementDate && <p><strong>Fecha de Gestión:</strong> {formatDisplayValue(selectedEvaluation.managementDate)}</p>}
-                    <p><strong>Sección:</strong> {selectedEvaluation.section}</p>
+                    <div className="edit-header"><h2>Detalle de la Evaluación</h2>{userRole === 'admin' && !isEditing && (<button onClick={handleEditClick} className="btn btn-primary">Editar</button>)}</div>
+                    {saveMessage && <p className={`save-message ${saveMessage.startsWith('Error') ? 'error' : 'success'}`}>{saveMessage}</p>}
+                    <p><strong>Fecha:</strong> {formatDisplayValue(selectedEvaluation.evaluationDate)} &nbsp;|&nbsp; <strong>Sección:</strong> {selectedEvaluation.section}</p>
                     
                     <h4>Puntajes</h4>
-                    <ul className='config-list'>
-                        {Object.entries(selectedEvaluation.scores).map(([name, score]) => (
-                            <li key={name} className='config-list-item'>
-                                <span>{name}</span>
-                                {isEditing ? (
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="10"
-                                        step="0.1"
-                                        value={editedEvaluation?.scores[name] || score}
-                                        onChange={(e) => handleScoreChange(name, e.target.value)}
-                                    />
-                                ) : (
-                                <strong>{isBinary ? (score === 10 ? 'Cumple' : 'No Cumple') : score}</strong>
-                                    )}
-                            </li>
-                        ))}
-                    </ul>
-                    
+                    <ul className='config-list'>{Object.entries(editableEvaluation.scores).map(([name, score]) => (<li key={name} className='config-list-item'><span>{name}</span>{isEditing ? <DynamicScoreSelector scaleType={sectionConfig?.scaleType} value={score} onChange={(newScore) => handleScoreChange(name, newScore)} /> : <strong>{isBinary ? (score === 10 ? 'Cumple' : 'No Cumple') : score}</strong>}</li>))}</ul>
+
                     {selectedEvaluation.nonEvaluableData && Object.keys(selectedEvaluation.nonEvaluableData).length > 0 && (
                         <>
                             <h4>Datos Adicionales</h4>
                             <ul className='config-list'>
-                            {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => (
-                                <li key={name} className='config-list-item'>
-                                    <span>{name}</span>
-                                    {isEditing ? (
-                                        <input
-                                            type="text"
-                                            value={editedEvaluation?.nonEvaluableData[name] || value}
-                                            onChange={(e) => handleNonEvaluableDataChange(name, e.target.value)}
-                                        />
-                                    ) : (
-                                        <span>{formatDisplayValue(value)}</span>
-                                    )}
-                                </li>
-                            ))}
+                            {Object.entries(selectedEvaluation.nonEvaluableData).map(([name, value]) => {
+                                const criterion = nonEvaluableCriteria.find(c => c.name === name);
+                                let input;
+                                if (isEditing) {
+                                    const currentValue = editableEvaluation.nonEvaluableData?.[name];
+                                    if (criterion?.inputType === 'date') {
+                                        const dateValue = currentValue?.seconds ? new Date(currentValue.seconds * 1000).toISOString().split('T')[0] : (typeof currentValue === 'string' ? currentValue : '');
+                                        input = <input type="date" className="form-control" value={dateValue} onChange={(e) => handleNonEvaluableChange(name, e.target.value)} />;
+                                    } else if (criterion?.inputType === 'select') {
+                                        input = <select className="form-control" value={currentValue} onChange={(e) => handleNonEvaluableChange(name, e.target.value)}>{criterion.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>;
+                                    } else {
+                                        input = <input type="text" className="form-control" value={currentValue} onChange={(e) => handleNonEvaluableChange(name, e.target.value)} />;
+                                    }
+                                }
+                                return (
+                                    <li key={name} className='config-list-item'>
+                                        <span>{name}</span>
+                                        {isEditing ? input : <strong>{formatDisplayValue(value)}</strong>}
+                                    </li>
+                                );
+                            })}
                             </ul>
                         </>
                     )}
 
-{selectedEvaluation.observations && (
-                        <>
-                            <h4>Observaciones</h4>
-                            <div className="observations-box">
-                                {isEditing ? (
-                                    <textarea
-                                        value={editedEvaluation?.observations || selectedEvaluation.observations}
-                                        onChange={(e) => handleObservationsChange(e.target.value)}
-                                        placeholder="Ingresa las observaciones..."
-                                    />
-                                ) : (
-                                    <p>{selectedEvaluation.observations}</p>
-                                )}
-                            </div>
-                        </>
-                    )}
-
-                    {isEditing && (
-                        <div className="edit-actions">
-                            <button 
-                                onClick={handleCancelEdit}
-                                className="btn btn-secondary"
-                                disabled={isSaving}
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={handleSaveEvaluation}
-                                className="btn btn-primary"
-                                disabled={isSaving}
-                            >
-                                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-                            </button>
-                        </div>
-                    )}
+                    <h4>Observaciones</h4>
+                    {isEditing ? <textarea className="form-control" value={editableEvaluation.observations} onChange={(e) => handleObservationsChange(e.target.value)} rows="4" /> : <div className="observations-box"><p>{selectedEvaluation.observations || 'Sin observaciones.'}</p></div>}
+                    
+                    {isEditing && (<div className="edit-actions"><button onClick={handleCancelEdit} className="btn btn-secondary" disabled={isSaving}>Cancelar</button><button onClick={handleSaveChanges} className="btn btn-primary" disabled={isSaving}>{isSaving ? 'Guardando...' : 'Guardar'}</button></div>)}
                 </div>
             </Modal>
         );
     };
 
-    const pageTitle = userRole === 'executive' ? 'Mi Equipo' : 'Nuestro Equipo';
-    const pageSubtitle = userRole === 'admin' 
-        ? 'Haz clic en un ejecutivo para ver su historial de rendimiento.'
-        : 'Puedes ver tu historial de rendimiento haciendo clic en tu tarjeta.';
-
     return (
         <>
-            <h1>{pageTitle}</h1>
-            <p className="page-subtitle">{pageSubtitle}</p>
-            <div className="team-grid">
-                {executives.map(exec => {
-                    const isClickable = userRole === 'admin' || (userRole === 'executive' && exec.id === executiveData?.id);
-                    return (
-                        <div 
-                            key={exec.id} 
-                            className={`card team-card ${isClickable ? '' : 'disabled'}`}
-                            onClick={() => handleExecutiveCardClick(exec)}
-                        >
-                            <div className="team-avatar">{exec.Nombre.charAt(0)}</div>
-                            <h2>{exec.Nombre}</h2>
-                            <p>{exec.Cargo || 'N/A'}</p>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {selectedExecutive && (
-                <Modal onClose={handleCloseExecutiveModal} size="large">
-                    {renderExecutiveDetails()}
-                </Modal>
-            )}
-
+            <h1>{userRole === 'executive' ? 'Mi Equipo' : 'Nuestro Equipo'}</h1>
+            <p className="page-subtitle">{userRole === 'admin' ? 'Haz clic en un ejecutivo para ver su historial.' : 'Puedes ver tu historial de rendimiento aquí.'}</p>
+            <div className="team-grid">{executives.map(exec => { const isClickable = userRole === 'admin' || (userRole === 'executive' && exec.id === executiveData?.id); return (<div key={exec.id} className={`card team-card ${isClickable ? '' : 'disabled'}`} onClick={() => isClickable && handleExecutiveCardClick(exec)}><div className="team-avatar">{exec.Nombre.charAt(0)}</div><h2>{exec.Nombre}</h2><p>{exec.Cargo || 'N/A'}</p></div>);})}</div>
+            {selectedExecutive && <Modal onClose={handleCloseExecutiveModal} size="large">{renderExecutiveDetails()}</Modal>}
             {selectedEvaluation && renderEvaluationDetailModal()}
         </>
     );
