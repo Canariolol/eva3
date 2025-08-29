@@ -11,11 +11,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando...</h1></div>;
     }
 
-    // Si no hay usuario, redirige a la página de login
-    if (!currentUser) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-    
     // Si el rol del usuario no está en la lista de roles permitidos, redirigir a la página principal
     if (allowedRoles && !allowedRoles.includes(userRole)) {
         return <Navigate to="/" replace />;
