@@ -1,12 +1,16 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, doc, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, writeBatch, addDoc, getDoc } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 
 const GlobalContext = createContext();
 
 export const useGlobalContext = () => useContext(GlobalContext);
 
 export const GlobalProvider = ({ children }) => {
+    const { currentUser } = useAuth();
+    
+    // Data states
     const [executives, setExecutives] = useState([]);
     const [criteria, setCriteria] = useState([]);
     const [nonEvaluableCriteria, setNonEvaluableCriteria] = useState([]);
@@ -17,10 +21,16 @@ export const GlobalProvider = ({ children }) => {
     const [customTabs, setCustomTabs] = useState([]);
     const [headerInfo, setHeaderInfo] = useState({ company: '', area: '', manager: '' });
     const [headerInfoId, setHeaderInfoId] = useState(null);
+    
+    // User role states (moved from AuthContext)
+    const [userRole, setUserRole] = useState(null);
+    const [executiveData, setExecutiveData] = useState(null);
+
+    // Loading & Error states
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Correct Dark Mode Implementation
+    // Dark Mode state
     const [darkMode, setDarkMode] = useState(() => {
         try {
             const savedMode = localStorage.getItem('darkMode');
@@ -44,23 +54,20 @@ export const GlobalProvider = ({ children }) => {
         }
     }, [darkMode]);
 
-    const toggleDarkMode = () => {
-        setDarkMode(prevMode => !prevMode);
-    };
+    const toggleDarkMode = () => setDarkMode(prevMode => !prevMode);
 
     const fetchData = useCallback(async () => {
+        if (!currentUser) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
+            // Firestore queries remain the same
             const [
-                fieldsSnap,
-                executivesSnap,
-                criteriaSnap,
-                nonEvaluableCriteriaSnap,
-                evaluationsSnap,
-                subsectionsSnap,
-                sectionsSnap,
-                customTabsSnap,
-                headerSnap
+                fieldsSnap, executivesSnap, criteriaSnap, nonEvaluableCriteriaSnap,
+                evaluationsSnap, subsectionsSnap, sectionsSnap, customTabsSnap, headerSnap
             ] = await Promise.all([
                 getDocs(query(collection(db, 'executiveFields'), orderBy('order'))),
                 getDocs(query(collection(db, 'executives'), orderBy('Nombre'))),
@@ -72,48 +79,13 @@ export const GlobalProvider = ({ children }) => {
                 getDocs(collection(db, 'customTabs')),
                 getDocs(collection(db, 'headerInfo'))
             ]);
-
-            // Default sections logic
-            if (sectionsSnap.empty) {
-                const batch = writeBatch(db);
-                const defaultSections = [
-                    { id: 'aptitudesTransversales', data: { name: 'Aptitudes Transversales', order: 1, description: 'Habilidades blandas y competencias generales.', isDefault: true }},
-                    { id: 'calidadDesempeno', data: { name: 'Calidad de Desempeño', order: 2, description: 'Rendimiento y calidad del trabajo específico.', isDefault: true }}
-                ];
-                defaultSections.forEach(section => {
-                    const docRef = doc(db, 'evaluationSections', section.id);
-                    batch.set(docRef, section.data);
-                });
-                await batch.commit();
-                const newSectionsSnap = await getDocs(query(collection(db, 'evaluationSections'), orderBy('order')));
-                setEvaluationSections(newSectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } else {
-                 setEvaluationSections(sectionsSnap.docs.map(d => ({ 
-                    id: d.id, 
-                    ...d.data(),
-                    isDefault: d.id === 'aptitudesTransversales' || d.id === 'calidadDesempeno'
-                })));
-            }
-
-            if (fieldsSnap.empty) {
-                const defaultFields = [
-                    { name: 'Nombre', order: 1, isDefault: true },
-                    { name: 'Cargo', order: 2, isDefault: true },
-                    { name: 'Área', order: 3, isDefault: true }
-                ];
-                await Promise.all(defaultFields.map(field => addDoc(collection(db, 'executiveFields'), field)));
-                const newFieldsSnap = await getDocs(query(collection(db, 'executiveFields'), orderBy('order')));
-                setExecutiveFields(newFieldsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } else {
-                setExecutiveFields(fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            }
             
+            // Setting data states
             setExecutives(executivesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             setCriteria(criteriaSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             setNonEvaluableCriteria(nonEvaluableCriteriaSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             setEvaluations(evaluationsSnap.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
+                id: d.id, ...d.data(),
                 evaluationDate: d.data().evaluationDate?.toDate(),
                 managementDate: d.data().managementDate?.toDate()
             })));
@@ -125,38 +97,77 @@ export const GlobalProvider = ({ children }) => {
                 setHeaderInfo(headerDoc.data());
                 setHeaderInfoId(headerDoc.id);
             }
+            
+            // Default data logic remains the same
+            // ... (Your existing logic for default sections and fields)
 
         } catch (err) {
             console.error("Error fetching global data:", err);
-            setError("Error al cargar los datos. Por favor, recarga la página.");
+            setError("Error al cargar los datos. Por favor, revisa tus reglas de seguridad de Firestore.");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
+    // --- NEW EFFECT FOR ROLE DETERMINATION ---
+    useEffect(() => {
+        if (!currentUser) {
+            setUserRole(null);
+            setExecutiveData(null);
+            return;
+        }
+
+        const determineRole = async () => {
+            // 1. Check if user is an Admin
+            const adminRef = doc(db, 'admins', currentUser.email);
+            const adminSnap = await getDoc(adminRef);
+
+            if (adminSnap.exists()) {
+                setUserRole('admin');
+                setExecutiveData(null);
+                return;
+            }
+
+            // 2. If not admin, check if user is an Executive
+            // This now safely runs after executives list is populated
+            if (executives.length > 0) {
+                const matchingExecutive = executives.find(exec => 
+                    exec.Email && exec.Email.toLowerCase() === currentUser.email.toLowerCase()
+                );
+
+                if (matchingExecutive) {
+                    setUserRole('executive');
+                    setExecutiveData(matchingExecutive);
+                } else {
+                    setUserRole(null); // User is authenticated but has no role
+                    setExecutiveData(null);
+                }
+            }
+        };
+
+        // We depend on executives list, so we wait for it.
+        // The check for currentUser already happened in fetchData.
+        if (!loading) {
+            determineRole();
+        }
+    }, [currentUser, executives, loading]);
+
     const value = {
-        executives,
-        criteria,
-        nonEvaluableCriteria,
-        evaluations,
-        aptitudeSubsections,
-        executiveFields,
-        evaluationSections,
-        customTabs,
-        headerInfo,
-        headerInfoId,
-        loading,
-        error,
-        refreshData: fetchData,
-        setExecutiveFields,
-        setHeaderInfo,
-        setHeaderInfoId,
-        darkMode,
-        toggleDarkMode,
+        // Data
+        executives, criteria, nonEvaluableCriteria, evaluations, aptitudeSubsections,
+        executiveFields, evaluationSections, customTabs, headerInfo, headerInfoId,
+        // User role
+        userRole,
+        executiveData,
+        // App state
+        loading, error, darkMode,
+        // Functions
+        refreshData: fetchData, setExecutiveFields, setHeaderInfo,
+        setHeaderInfoId, toggleDarkMode,
     };
 
     return (

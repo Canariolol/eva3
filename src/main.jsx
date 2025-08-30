@@ -25,11 +25,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router>
       <GoogleOAuthProvider clientId={googleClientId}>
-        <GlobalProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <GlobalProvider>
             <App />
-          </AuthProvider>
-        </GlobalProvider>
+          </GlobalProvider>
+        </AuthProvider>
       </GoogleOAuthProvider>
     </Router>
   </React.StrictMode>,
