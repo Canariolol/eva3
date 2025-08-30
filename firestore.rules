@@ -2,8 +2,33 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+
+    // Regla 1: Colección de Usuarios
+    // Esta regla es la más importante para la seguridad de los datos de tus usuarios.
+    // - allow create: Un usuario puede crear su propio perfil al registrarse.
+    // - allow read, update: Un usuario autenticado solo puede leer y modificar su propio documento.
+    // Nadie más puede ver o editar la información de otro usuario.
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Regla 2: Acceso a otras colecciones para el Dashboard y la App
+    // Para que los usuarios puedan usar el dashboard (crear evaluaciones, ver equipos, etc.),
+    // debes permitir explícitamente el acceso a las colecciones correspondientes.
+    // Por defecto, todo acceso está bloqueado.
+    //
+    // **ACCIÓN REQUERIDA**: Añade un bloque 'match' para cada colección que tu app utilice.
+    //
+    // EJEMPLO: Si tienes una colección llamada 'evaluations', la regla podría ser:
+    /*
+    match /evaluations/{evaluationId} {
+      allow read, write: if request.auth != null;
+    }
+    */
+
+    // Agrega aquí las reglas para el resto de tus colecciones (teams, configurations, etc.)
+    // para que los usuarios autenticados puedan interactuar con ellas.
+
   }
 }
