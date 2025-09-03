@@ -57,7 +57,7 @@ const LandingPage = () => {
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <h1 className="text-2xl font-bold text-primary">TeamInsight</h1>
+                                <h1 className="text-2xl font-bold text-primary">Eva3</h1>
                             </div>
                             <div className="hidden md:block ml-10">
                                 <div className="flex items-baseline space-x-8">
