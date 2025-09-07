@@ -1,0 +1,123 @@
+/* src/components/ModernSidebar.css */
+
+.modern-sidebar {
+    width: 260px;
+    background-color: #111827; /* Dark background */
+    color: #9CA3AF; /* Light gray text */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    transition: width 0.3s ease;
+    border-right: 1px solid #1F2937;
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #1F2937;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #3B82F6; /* Primary blue */
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    margin-right: 1rem;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin: 0;
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+    padding: 1rem 0;
+    overflow-y: auto;
+}
+
+.nav-section-title {
+    padding: 0 1.5rem 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6B7280; /* Darker gray */
+}
+
+.sidebar-nav a,
+.sidebar-footer a,
+.sidebar-footer .logout-button {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    margin: 0.25rem 1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: #D1D5DB; /* Lighter gray for links */
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-footer a:hover,
+.sidebar-footer .logout-button:hover {
+    background-color: #1F2937; /* Darker background on hover */
+    color: #FFFFFF;
+}
+
+.sidebar-nav a.active {
+    background-color: #3B82F6; /* Primary blue for active */
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-nav a svg,
+.sidebar-footer a svg,
+.sidebar-footer .logout-button svg {
+    margin-right: 1rem;
+    font-size: 1.25rem;
+}
+
+.sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid #1F2937;
+}
+
+.sidebar-footer .divider {
+    height: 1px;
+    background-color: #1F2937;
+    margin: 1rem 0;
+}
+
+.sidebar-footer .logout-button {
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Adjust main layout when modern UI is active */
+.modern-layout {
+    display: flex;
+}
+
+.modern-layout .main-panel {
+    margin-left: 260px; /* Same as sidebar width */
+    width: calc(100% - 260px);
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}

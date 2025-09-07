@@ -14,6 +14,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+console.log("Conectando al proyecto de Firebase:", firebaseConfig.projectId);
+
 // Valida que las variables de entorno estén presentes.
 // Si alguna falta, la aplicación fallará al iniciar con un error claro.
 if (!firebaseConfig.projectId) {

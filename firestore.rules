@@ -3,26 +3,44 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Regla 1: Colección de Usuarios
-    // Un usuario autenticado solo puede leer y modificar su propio documento.
+    // Regla 1: Datos de usuario son privados y solo accesibles por el propio usuario.
     match /users/{userId} {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow read, update: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- REGLA AÑADIDA ---
-    // Regla 2: Datos de Configuración Global
-    // Permite que CUALQUIER persona (incluidos los visitantes no autenticados)
-    // lea los documentos de la colección 'configurations'.
-    // Esto es necesario para que la Landing Page y el contexto global funcionen.
-    // La escritura sigue restringida a usuarios autenticados.
-    match /configurations/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null; // O 'if false;' si nadie debe escribir desde el cliente.
+    // Reglas explícitas y seguras para las colecciones de la aplicación.
+    // Permiten a cualquier usuario autenticado leer y escribir en ellas.
+
+    match /admins/{docId} {
+      allow read, write: if request.auth != null;
     }
-
-    // Agrega aquí las reglas para el resto de tus colecciones (teams, evaluations, etc.)
-    // para que los usuarios autenticados puedan interactuar con ellas.
-
+    match /executives/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /criteria/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /nonEvaluableCriteria/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /evaluations/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /aptitudeSubsections/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /evaluationSections/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /customTabs/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /headerInfo/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /executiveFields/{docId} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
