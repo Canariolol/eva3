@@ -10,8 +10,8 @@
     "//--- Scripts de Despliegue de la APP ---//": "",
     "build:cathywest": "vite build --mode cathywest",
     "deploy:cathywest": "firebase use cathywest && npm run build:cathywest && firebase deploy --only hosting:cathywest",
-    "build:2080": "vite build --mode 2080",
-    "deploy:2080": "firebase use 2080 && npm run build:2080 && firebase deploy --only hosting:2080",
+    "build:dev": "vite build --mode eva3-dev",
+    "deploy:dev": "firebase use eva3-dev && npm run build:eva3-dev && firebase deploy --only hosting:eva3-dev",
     "//--- Scripts de Despliegue de Backend (Firestore) ---//": "",
     "deploy-firestore:cathywest": "firebase use cathywest && firebase deploy --only firestore",
     "deploy-firestore:2080": "firebase use 2080 && firebase deploy --only firestore",
@@ -44,6 +44,7 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "firebase-admin": "^13.5.0",
     "vite": "^5.2.0"
   }
 }

@@ -24,7 +24,7 @@
     },
     "eva3-1b284": {
       "hosting": {
-        "testing": [
+        "eva3-dev": [
           "eva3-1b284"
         ]
       }

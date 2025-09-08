@@ -2,9 +2,9 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions"; // <-- 1. IMPORTAR FUNCTIONS
 
 // Lee las credenciales desde las variables de entorno inyectadas por Vite.
-// Más información: https://vitejs.dev/guide/env-and-mode.html
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -16,13 +16,13 @@ const firebaseConfig = {
 
 console.log("Conectando al proyecto de Firebase:", firebaseConfig.projectId);
 
-// Valida que las variables de entorno estén presentes.
-// Si alguna falta, la aplicación fallará al iniciar con un error claro.
 if (!firebaseConfig.projectId) {
   throw new Error("La variable de entorno VITE_FIREBASE_PROJECT_ID no está definida. Asegúrate de tener un archivo .env con la configuración de Firebase.");
 }
-
-const app = initializeApp(firebaseConfig);
-
+      
+export const app = initializeApp(firebaseConfig);
+      
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+// --- 2. INICIALIZAR Y EXPORTAR FUNCTIONS ---
+export const functions = getFunctions(app, "southamerica-west1");

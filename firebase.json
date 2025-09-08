@@ -1,4 +1,10 @@
 {
+  "functions": [
+    {
+      "source": "functions",
+      "runtime": "python311"
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -35,7 +41,7 @@
       ]
     },
     {
-      "target": "2080",
+      "target": "eva3-dev",
       "public": "public",
       "ignore": [
         "firebase.json",
