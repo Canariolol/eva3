@@ -10,13 +10,15 @@ import ModernLayout from './layouts/ModernLayout';
 // Pages
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
-import ModernDashboard from './pages/ModernDashboard'; // <-- IMPORTAMOS EL NUEVO DASHBOARD
+import ModernDashboard from './pages/ModernDashboard';
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import CustomTab from './pages/CustomTab';
 import CorreosYCasos from './pages/CorreosYCasos';
 import ReportesDeArea from './pages/ReportesDeArea';
+import Alertas from './pages/Alertas';
+import Contactos from './pages/Contactos';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 
@@ -29,7 +31,8 @@ import './styles/dark-mode.css';
 
 const AppLayoutController = () => {
     const { uiPreset, loading: globalLoading, error } = useGlobalContext();
-    const { loading: authLoading } = useAuth();
+    const auth = useAuth();
+    const authLoading = auth.loading;
 
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
@@ -46,7 +49,6 @@ const AppLayoutController = () => {
     return <ClassicLayout />;
 };
 
-// Componente para decidir qué dashboard renderizar
 const DashboardController = () => {
     const { uiPreset } = useGlobalContext();
     return uiPreset === 'modern' ? <ModernDashboard /> : <Dashboard />;
@@ -67,13 +69,12 @@ function App() {
                     </ProtectedRoute>
                 }
             >
-                {/* --- RUTA DE DASHBOARD ACTUALIZADA --- */}
                 <Route index element={<DashboardController />} />
-
-                {/* El resto de las rutas permanecen igual */}
                 <Route path="team" element={<Team />} />
                 <Route path="correos" element={<CorreosYCasos />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />
+                <Route path="alertas" element={<Alertas />} />
+                <Route path="contactos" element={<Contactos />} />
                 <Route path="reportes-de-area" element={<ProtectedRoute allowedRoles={['superadmin']}><ReportesDeArea /></ProtectedRoute>} />
                 <Route path="evaluate" element={<ProtectedRoute allowedRoles={['superadmin']}><Evaluate /></ProtectedRoute>} />
                 <Route path="configuration" element={<ProtectedRoute allowedRoles={['superadmin']}><Configuration /></ProtectedRoute>} />

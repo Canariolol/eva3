@@ -2,59 +2,66 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGlobalContext } from '../context/GlobalContext';
-import DarkModeToggle from './DarkModeToggle';
-import { FiGrid, FiUsers, FiEdit, FiSettings, FiMail, FiFileText, FiLogOut } from 'react-icons/fi';
+import { 
+    BarChart3, Users, ClipboardCheck, Wrench, FileText, 
+    Contact, Bell, Settings, LogOut 
+} from 'lucide-react';
 
 import './ModernSidebar.css';
 
 const ModernSidebar = () => {
-    const { userRole, logout } = useAuth(); // Obtenemos el nuevo rol del AuthContext
+    // --- CORRECCIÓN ---
+    // Hacemos la llamada en dos pasos para evitar el error.
+    const auth = useAuth();
+    const userRole = auth.userRole;
+    const logout = auth.logout;
+
     const { customTabs } = useGlobalContext();
 
     return (
         <aside className="modern-sidebar">
-            <div className="sidebar-logo">
-                <div className="logo-icon">E³</div>
-                <h1 className="logo-text">Eva3</h1>
+            <div className="sidebar-header">
+                <div className="logo-container">
+                    <div className="logo-icon">E³</div>
+                    <div className="logo-text-container">
+                        <h1 className="logo-text">Eva3</h1>
+                        <p className="logo-subtext">Evaluación de Equipos</p>
+                    </div>
+                </div>
             </div>
+            
             <nav className="sidebar-nav">
-                <p className="nav-section-title">Herramientas</p>
-                <NavLink to="/dashboard" end><FiGrid /><span>Dashboard</span></NavLink>
-                <NavLink to="/dashboard/team"><FiUsers /><span>Mi Equipo</span></NavLink>
-                <NavLink to="/dashboard/correos"><FiMail /><span>Correos y Casos</span></NavLink>
+                <NavItem to="/dashboard" icon={<BarChart3 />} label="Dashboard" />
+                <NavItem to="/dashboard/team" icon={<Users />} label="Equipo" />
+                <NavItem to="/dashboard/evaluate" icon={<ClipboardCheck />} label="Evaluar" />
+                <NavItem to="/dashboard/correos" icon={<Wrench />} label="Herramientas" />
+                <NavItem to="/dashboard/reportes-de-area" icon={<FileText />} label="Reportes" />
+                <NavItem to="/dashboard/contactos" icon={<Contact />} label="Contactos" />
+                <NavItem to="/dashboard/alertas" icon={<Bell />} label="Alertas" alertCount={3} />
                 
-                {/* --- CAMBIO DE LÓGICA DE ROL --- */}
                 {userRole === 'superadmin' && (
-                    <NavLink to="/dashboard/reportes-de-area"><FiFileText /><span>Reportes de Área</span></NavLink>
-                )}
-
-                {customTabs.length > 0 && (
-                    <>
-                        <p className="nav-section-title">Pestañas Personalizadas</p>
-                        {customTabs.map(tab => (
-                            <NavLink key={tab.id} to={`/dashboard/tabs/${tab.id}`}><FiEdit /><span>{tab.name}</span></NavLink>
-                        ))}
-                    </>
+                    <NavItem to="/dashboard/configuration" icon={<Settings />} label="Configuración" />
                 )}
             </nav>
+
             <div className="sidebar-footer">
-                <p className="nav-section-title">Configuración</p>
-                {/* --- CAMBIO DE LÓGICA DE ROL --- */}
-                {userRole === 'superadmin' && (
-                    <>
-                        <NavLink to="/dashboard/evaluate"><FiEdit /><span>Evaluar</span></NavLink>
-                        <NavLink to="/dashboard/configuration"><FiSettings /><span>Configuración</span></NavLink>
-                    </>
-                )}
-                <div className="divider"></div>
-                <DarkModeToggle />
                 <button onClick={logout} className="logout-button">
-                    <FiLogOut />
+                    <LogOut size={20} />
                     <span>Cerrar Sesión</span>
                 </button>
             </div>
         </aside>
     );
 };
+
+const NavItem = ({ to, icon, label, alertCount }) => (
+    <NavLink to={to} end className="nav-item">
+        <div className="nav-item-icon">{icon}</div>
+        <span className="nav-item-label">{label}</span>
+        {alertCount > 0 && (
+            <span className="nav-item-alert">{alertCount}</span>
+        )}
+    </NavLink>
+);
 
 export default ModernSidebar;

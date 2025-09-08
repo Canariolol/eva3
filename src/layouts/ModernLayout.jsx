@@ -1,22 +1,32 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-import ModernSidebar from '../components/ModernSidebar'; // Asumiendo que crearemos este componente
-import Header from '../components/Header'; // Reutilizaremos el Header
-import Footer from '../components/Footer'; // Reutilizaremos el Footer
+// --- RUTAS CORREGIDAS ---
+import ModernSidebar from '../components/ModernSidebar';
+import ModernHeader from '../components/ModernHeader';
+import Footer from '../components/Footer';
+import { useGlobalContext } from '../context/GlobalContext';
 
-// Importa los nuevos estilos para la UI moderna si son necesarios
-// import './ModernLayout.css';
+// Importamos los nuevos estilos para el layout
+import './ModernLayout.css';
 
 const ModernLayout = () => {
     const location = useLocation();
+    // --- ERROR DE SINTAXIS CORREGIDO ---
+    const { darkMode } = useGlobalContext(); // Obtenemos el estado del modo oscuro
+
+    // Agregamos la clase 'dark' al body para que los estilos globales funcionen
+    React.useEffect(() => {
+        document.body.classList.toggle('dark', darkMode);
+    }, [darkMode]);
 
     return (
-        <div className="modern-layout">
+        // El div principal ahora controla el color de fondo base
+        <div className={`modern-layout-container ${darkMode ? 'dark' : ''}`}>
             <ModernSidebar />
-            <div className="main-panel">
-                <Header />
-                <main className="main-content">
+            <div className="content-panel">
+                <ModernHeader />
+                <main className="main-content-area">
                      <TransitionGroup component={null}>
                         <CSSTransition key={location.pathname} classNames="page-fade" timeout={300}>
                             <div className="page-container">
