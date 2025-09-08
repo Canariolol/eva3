@@ -10,6 +10,7 @@ import ModernLayout from './layouts/ModernLayout';
 // Pages
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+import ModernDashboard from './pages/ModernDashboard'; // <-- IMPORTAMOS EL NUEVO DASHBOARD
 import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
@@ -28,11 +29,7 @@ import './styles/dark-mode.css';
 
 const AppLayoutController = () => {
     const { uiPreset, loading: globalLoading, error } = useGlobalContext();
-    
-    // --- CORRECCIÓN ---
-    // Hacemos la llamada en dos pasos para evitar el error del transpilador.
-    const auth = useAuth();
-    const authLoading = auth.loading;
+    const { loading: authLoading } = useAuth();
 
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
@@ -47,6 +44,12 @@ const AppLayoutController = () => {
     }
 
     return <ClassicLayout />;
+};
+
+// Componente para decidir qué dashboard renderizar
+const DashboardController = () => {
+    const { uiPreset } = useGlobalContext();
+    return uiPreset === 'modern' ? <ModernDashboard /> : <Dashboard />;
 };
 
 function App() {
@@ -64,8 +67,10 @@ function App() {
                     </ProtectedRoute>
                 }
             >
-                {/* Rutas anidadas renderizadas por <Outlet /> */}
-                <Route index element={<Dashboard />} />
+                {/* --- RUTA DE DASHBOARD ACTUALIZADA --- */}
+                <Route index element={<DashboardController />} />
+
+                {/* El resto de las rutas permanecen igual */}
                 <Route path="team" element={<Team />} />
                 <Route path="correos" element={<CorreosYCasos />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />

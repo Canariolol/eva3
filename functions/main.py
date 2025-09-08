@@ -1,4 +1,3 @@
-# Welcome to Cloud Functions for Firebase.
 # ... (imports y código existente) ...
 import os
 import re
@@ -23,20 +22,49 @@ options.set_global_options(region="southamerica-west1")
 initialize_app()
 db = firestore.client()
 
-# --- FUNCIÓN DE AUTENTICACIÓN (NUEVA) ---
 @identity_fn.before_user_created()
 def on_new_user_signup(event: identity_fn.AuthBlockingEvent) -> identity_fn.BeforeCreateResponse:
-    company_ref = db.collection('companies').document()
-    user_data = {
-        'uid': event.data.uid, 'email': event.data.email, 'role': 'manager',
-        'companyId': company_ref.id, 'createdAt': firestore.SERVER_TIMESTAMP
-    }
-    db.collection('users').document(event.data.uid).set(user_data)
-    auth.set_custom_user_claims(event.data.uid, {
-        'role': 'manager', 'companyId': company_ref.id
-    })
+    """
+    Gestiona el registro de nuevos usuarios, creando una compañía,
+    asignando roles y Custom Claims.
+    """
+    try:
+        # 1. Crea una nueva compañía para este usuario
+        company_ref = db.collection('companies').document()
+        
+        # 2. Prepara los datos del perfil del nuevo usuario
+        user_data = {
+            'uid': event.data.uid, 'email': event.data.email, 'role': 'manager',
+            'companyId': company_ref.id, 'createdAt': firestore.SERVER_TIMESTAMP
+        }
+        db.collection('users').document(event.data.uid).set(user_data)
+        
+        # --- NUEVO PASO ---
+        # 3. Crea un documento 'headerInfo' por defecto para la nueva compañía
+        header_info_ref = company_ref.collection('headerInfo').document('main')
+        header_info_ref.set({
+            'company': event.data.display_name or event.data.email, # Un valor por defecto
+            'manager': event.data.display_name or '',
+            'area': 'General'
+        })
+        
+        # 4. Asigna los Custom Claims al token de autenticación
+        auth.set_custom_user_claims(event.data.uid, {
+            'role': 'manager', 'companyId': company_ref.id
+        })
+
+    except Exception as e:
+        # Loguea el error para depuración
+        print(f"Error en on_new_user_signup: {e}")
+        # Lanza un error HttpsError para que la creación del usuario falle si algo sale mal
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message="No se pudo inicializar la cuenta, por favor intente de nuevo."
+        )
+
     return identity_fn.BeforeCreateResponse()
 
+# ... (resto de funciones) ...
 # --- NUEVA FUNCIÓN TEMPORAL PARA ASIGNAR ROL DE SUPERADMIN ---
 @https_fn.on_call(secrets=[])
 def set_superadmin_claim(req: https_fn.CallableRequest) -> https_fn.Response:
@@ -61,7 +89,7 @@ def set_superadmin_claim(req: https_fn.CallableRequest) -> https_fn.Response:
         if user_ref.get().exists:
             user_ref.update({'role': 'superadmin'})
         else:
-            user_ref.set({'role': 'supepiuradmin', 'email': email}, merge=True)
+            user_ref.set({'role': 'superadmin', 'email': email}, merge=True)
             
         return https_fn.Response(f"El rol 'superadmin' fue asignado exitosamente a {email}.")
     except Exception as e:
@@ -76,3 +104,4 @@ app = Flask(__name__)
 def gmail_api_handler(req: https_fn.Request) -> https_fn.Response:
     with app.request_context(req.environ):
         return app.full_dispatch_request()
+
