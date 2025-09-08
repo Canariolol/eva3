@@ -1,158 +1,147 @@
-import React from 'react';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
-import './ReportesDeArea.css'; // Importamos los nuevos estilos
-
-// Registrar los componentes necesarios para Chart.js
-ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
-
-// --- Componentes de Tarjetas de KPI ---
-const KpiCard = ({ icon, bgColor, textColor, title, value }) => (
-    <div className="kpi-card">
-        <div className={`kpi-icon-wrapper`} style={{ backgroundColor: bgColor }}>
-            {icon}
-        </div>
-        <div>
-            <p className="kpi-label">{title}</p>
-            <p className="kpi-value" style={{ color: textColor }}>{value}</p>
-        </div>
-    </div>
-);
-
-const KpiCardDistribution = ({ title, data }) => (
-    <div className="kpi-card" style={{ alignItems: 'flex-start', flexDirection: 'column' }}>
-        <p className="kpi-label mb-2">{title}</p>
-        <div className="space-y-2">
-            {data.map((item, index) => (
-                <div key={index}>
-                    <p className="text-lg font-bold" style={{color: '#4f46e5'}}>
-                        {item.percentage}
-                        <span className="text-sm font-normal" style={{color: '#4b5563'}}> ({item.hours})</span>
-                    </p>
-                    <p className="text-xs" style={{color: '#6b7280'}}>{item.label}</p>
-                </div>
-            ))}
-        </div>
-    </div>
-);
+import React, { useState, useMemo } from 'react';
+import { useGlobalContext } from '../context/GlobalContext';
+import { Download, Filter, Save } from 'lucide-react';
+import Papa from 'papaparse';
 
 const ReportesDeArea = () => {
-    // Datos para el gráfico de torta
-    const chartData = {
-        labels: ['N1 : Resuelto por Nivel 1', 'N3 : Escalado a Desarrollo', 'N2 : Escalado a Terreno', 'Resto : Cancelado, otro.'],
-        datasets: [{
-            label: 'Distribución de Tickets',
-            data: [407, 108, 66, 4],
-            backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#9ca3af'],
-            hoverOffset: 4
-        }]
+    const { evaluations, executives, criteria, nonEvaluableCriteria, loading } = useGlobalContext();
+    const [filters, setFilters] = useState({
+        startDate: '',
+        endDate: '',
+        executiveId: 'all',
+    });
+
+    // Memoizamos los datos filtrados para evitar recálculos innecesarios
+    const filteredEvaluations = useMemo(() => {
+        return evaluations.filter(ev => {
+            const evalDate = ev.evaluationDate; // Ya es un objeto Date
+            if (!evalDate) return false;
+
+            const startDate = filters.startDate ? new Date(filters.startDate) : null;
+            const endDate = filters.endDate ? new Date(filters.endDate) : null;
+
+            if (startDate && evalDate < startDate) return false;
+            if (endDate && evalDate > endDate) return false;
+            if (filters.executiveId !== 'all' && ev.executiveId !== filters.executiveId) return false;
+
+            return true;
+        });
+    }, [evaluations, filters]);
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'right',
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return `${context.label}: ${context.parsed} tickets`;
-                    }
-                }
-            },
-            datalabels: {
-                color: '#ffffff',
-                font: { weight: 'bold', size: 14 },
-                formatter: (value, context) => {
-                    const datapoints = context.chart.data.datasets[0].data;
-                    const total = datapoints.reduce((total, datapoint) => total + datapoint, 0);
-                    const percentage = (value / total) * 100;
-                    return percentage.toFixed(0) + '%';
-                },
-            }
+    const handleExport = () => {
+        if (filteredEvaluations.length === 0) {
+            alert("No hay datos para exportar con los filtros seleccionados.");
+            return;
         }
+
+        // Estructuramos los datos para el CSV
+        const dataForCsv = filteredEvaluations.map(ev => {
+            const executive = executives.find(e => e.id === ev.executiveId);
+            const baseData = {
+                "ID Evaluacion": ev.id,
+                "Fecha Evaluacion": ev.evaluationDate.toLocaleDateString('es-CL'),
+                "ID Ejecutivo": ev.executiveId,
+                "Nombre Ejecutivo": executive ? executive.Nombre : 'N/A',
+                "Puntaje Total": ev.totalScore,
+                "Comentarios Generales": ev.generalComments,
+            };
+
+            // Añadimos los puntajes de los criterios evaluables
+            criteria.forEach(c => {
+                baseData[`${c.name} (Puntaje)`] = ev.scores?.[c.id]?.score || 'N/A';
+                baseData[`${c.name} (Comentario)`] = ev.scores?.[c.id]?.comment || '';
+            });
+
+            // Añadimos los valores de los criterios no evaluables
+            nonEvaluableCriteria.forEach(c => {
+                baseData[c.name] = ev.nonEvaluable?.[c.id] || 'N/A';
+            });
+            
+            return baseData;
+        });
+
+        const csv = Papa.unparse(dataForCsv);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `reporte_evaluaciones_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
-    const SvgIcon = ({ color, d }) => (
-        <svg className="w-8 h-8" style={{color}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={d}></path>
-        </svg>
-    );
+    if (loading) return <p>Cargando datos...</p>;
 
     return (
-        <div className="report-container">
-            <header className="report-header">
-                <h1>Resumen Área Clientes - Placeholder</h1>
-                <p>Mes de Junio 2025<br></br><br></br>
-                <small>Se agregará selector de mes para generar un reporte dinámico y exportable.<br></br>
-                Se agregarán botones para subir archivos .csv/.xlsx y generar los reportes, guardando los datos entregados en la DB.</small></p>
-            </header>
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Central de Reportes</h1>
+                <div className="flex gap-2">
+                    <button className="btn btn-secondary" disabled>
+                        <Save size={16} className="mr-2" /> Guardar Reporte (Próximamente)
+                    </button>
+                    <button onClick={handleExport} className="btn btn-primary">
+                        <Download size={16} className="mr-2" /> Exportar a CSV
+                    </button>
+                </div>
+            </div>
 
-            <section className="kpi-grid">
-                <KpiCard 
-                    icon={<SvgIcon color="#16a34a" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />} 
-                    bgColor="#dcfce7" 
-                    textColor="#16a34a" 
-                    title="Disponibilidad (SLA)" 
-                    value="100%" 
-                />
-                <KpiCard 
-                    icon={<SvgIcon color="#2563eb" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                    bgColor="#dbeafe"
-                    textColor="#2563eb"
-                    title="Incidentes Mayores"
-                    value="0"
-                />
-                <KpiCardDistribution
-                    title="Distribución de Horas"
-                    data={[
-                        { percentage: '80%', hours: '1349.86h', label: 'Proyectos' },
-                        { percentage: '20%', hours: '347.4h', label: 'Soporte N3' }
-                    ]}
-                />
-                <KpiCard
-                    icon={<SvgIcon color="#d97706" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                    bgColor="#fef3c7"
-                    textColor="#d97706"
-                    title="Resueltos Nivel 1"
-                    value="70%"
-                />
-            </section>
-
-            <section className="main-grid">
-                <div className="summary-card">
-                    <h2>Resumen Mesa de Servicio</h2>
-                    <div className="space-y-4">
-                        <div className="summary-item">
-                            <p>Tickets abiertos en Junio</p>
-                            <span style={{color: '#3b82f6'}}>585</span>
-                        </div>
-                        <div className="summary-item">
-                            <p>Tickets pendientes (Total al 30 junio)</p>
-                            <span style={{color: '#ef4444'}}>88</span>
-                        </div>
-                        <div className="summary-sub-item">
-                            <div className="flex">
-                                <p>Escalados a N3</p>
-                                <span>46</span>
-                            </div>
-                            <div className="flex">
-                                <p>Escalados a Terreno</p>
-                                <span>42</span>
-                            </div>
-                        </div>
+            <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label className="label">Fecha Inicio</label>
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="form-control" />
+                    </div>
+                    <div>
+                        <label className="label">Fecha Fin</label>
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="form-control" />
+                    </div>
+                    <div>
+                        <label className="label">Ejecutivo</label>
+                        <select name="executiveId" value={filters.executiveId} onChange={handleFilterChange} className="form-control">
+                            <option value="all">Todos</option>
+                            {executives.map(exec => (
+                                <option key={exec.id} value={exec.id}>{exec.Nombre}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
-                <div className="summary-card">
-                    <h2>Distribución de Tickets por Nivel (Junio)</h2>
-                    <div className="chart-container">
-                        <Doughnut data={chartData} options={chartOptions} />
+
+                <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-2">{filteredEvaluations.length} Evaluaciones Encontradas</h3>
+                    <div className="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Ejecutivo</th>
+                                    <th>Puntaje Total</th>
+                                    <th>Evaluado Por</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredEvaluations.map(ev => {
+                                    const executive = executives.find(e => e.id === ev.executiveId);
+                                    return (
+                                        <tr key={ev.id}>
+                                            <td>{ev.evaluationDate.toLocaleDateString('es-CL')}</td>
+                                            <td>{executive ? executive.Nombre : 'N/A'}</td>
+                                            <td>{ev.totalScore || 'N/A'}%</td>
+                                            <td>{ev.evaluatedBy || 'N/A'}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
     );
 };

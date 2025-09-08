@@ -3,11 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 
-// Layouts
+// Componentes y Páginas
 import ClassicLayout from './layouts/ClassicLayout'; 
 import ModernLayout from './layouts/ModernLayout';
-
-// Pages
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import ModernDashboard from './pages/ModernDashboard';
@@ -21,18 +19,16 @@ import Alertas from './pages/Alertas';
 import Contactos from './pages/Contactos';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-
-// Components
 import ProtectedRoute from './components/ProtectedRoute';
+import OnboardingWizard from './components/OnboardingWizard'; // <-- IMPORTAMOS EL WIZARD
 
-// Styles
+// Estilos
 import './App.css';
 import './styles/dark-mode.css';
 
 const AppLayoutController = () => {
-    const { uiPreset, loading: globalLoading, error } = useGlobalContext();
-    const auth = useAuth();
-    const authLoading = auth.loading;
+    const { uiPreset, loading: globalLoading, error, showOnboarding, setShowOnboarding } = useGlobalContext();
+    const { currentUser, loading: authLoading } = useAuth();
 
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
@@ -41,12 +37,14 @@ const AppLayoutController = () => {
     if (error) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>{error}</h1></div>;
     }
-    
-    if (uiPreset === 'modern') {
-        return <ModernLayout />;
-    }
 
-    return <ClassicLayout />;
+    // Lógica para mostrar el Wizard
+    if (showOnboarding) {
+        return <OnboardingWizard user={currentUser} onFinish={() => setShowOnboarding(false)} />;
+    }
+    
+    // Si no se muestra el wizard, renderiza el layout normal
+    return uiPreset === 'modern' ? <ModernLayout /> : <ClassicLayout />;
 };
 
 const DashboardController = () => {
