@@ -3,44 +3,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Regla 1: Datos de usuario son privados y solo accesibles por el propio usuario.
+    // --- FUNCIONES DE AYUDA ---
+    // Función para verificar si el usuario es un Super Admin.
+    function isSuperAdmin() {
+      return exists(/databases/$(database)/documents/superadmins/$(request.auth.uid));
+    }
+    
+    // Función para obtener los datos del usuario desde la colección 'users'.
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // --- REGLAS PRINCIPALES ---
+
+    // 1. Colección de Usuarios: Almacena el rol y companyId.
+    // - Cualquiera puede crear su propio documento de usuario al registrarse.
+    // - Un usuario solo puede leer y actualizar sus propios datos.
+    // - Un Super Admin puede leer cualquier perfil de usuario.
     match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow read, update: if request.auth.uid == userId || isSuperAdmin();
     }
 
-    // Reglas explícitas y seguras para las colecciones de la aplicación.
-    // Permiten a cualquier usuario autenticado leer y escribir en ellas.
+    // 2. Colección de Super Admins: Lista de UID de administradores.
+    // - Solo los Super Admins pueden leer esta lista. Nadie puede escribir en ella desde el cliente.
+    match /superadmins/{userId} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // Proteger contra escritura desde el cliente.
+    }
 
-    match /admins/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /executives/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /criteria/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /nonEvaluableCriteria/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /evaluations/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /aptitudeSubsections/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /evaluationSections/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /customTabs/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /headerInfo/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /executiveFields/{docId} {
-      allow read, write: if request.auth != null;
+    // 3. Colección de Compañías: Contiene todos los datos específicos de cada cliente.
+    // Esta es la regla MÁS IMPORTANTE para el aislamiento de datos.
+    match /companies/{companyId}/{document=**} {
+      // Un usuario puede leer/escribir dentro de una compañía si:
+      // a) Es un Super Admin.
+      // b) O, el 'companyId' en su token de autenticación coincide con el 'companyId' del documento al que intenta acceder.
+      allow read, write: if isSuperAdmin() || (request.auth.token.companyId == companyId);
     }
   }
 }

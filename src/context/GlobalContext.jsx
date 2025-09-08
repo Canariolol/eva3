@@ -1,16 +1,17 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, doc, writeBatch, addDoc, getDoc } from 'firebase/firestore';
-import { useAuth } from './AuthContext';
+import { collection, getDocs, query, orderBy, doc } from 'firebase/firestore';
+import { useAuth } from './AuthContext'; // Ahora obtenemos el rol y companyId de aquí
 
 const GlobalContext = createContext();
 
 export const useGlobalContext = () => useContext(GlobalContext);
 
 export const GlobalProvider = ({ children }) => {
-    const { currentUser } = useAuth();
+    // Obtenemos currentUser, companyId y el rol directamente del AuthContext
+    const { currentUser, companyId, userRole } = useAuth();
     
-    // Data states
+    // Los estados de datos permanecen igual
     const [executives, setExecutives] = useState([]);
     const [criteria, setCriteria] = useState([]);
     const [nonEvaluableCriteria, setNonEvaluableCriteria] = useState([]);
@@ -20,148 +21,110 @@ export const GlobalProvider = ({ children }) => {
     const [evaluationSections, setEvaluationSections] = useState([]);
     const [customTabs, setCustomTabs] = useState([]);
     const [headerInfo, setHeaderInfo] = useState({ company: '', area: '', manager: '' });
-    const [headerInfoId, setHeaderInfoId] = useState(null);
 
-    // User role states
-    const [userRole, setUserRole] = useState(null);
+    // Estado para el perfil del ejecutivo (si el usuario es uno)
     const [executiveData, setExecutiveData] = useState(null);
 
-    // Loading & Error states
+    // Estados de la UI (loading, error, presets)
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [uiPreset, setUiPreset] = useState(() => localStorage.getItem('uiPreset') || 'classic');
+    const [darkMode, setDarkMode] = useState(() => (localStorage.getItem('darkMode') === 'true'));
 
-    // --- NEW: UI PRESET STATE ---
-    const [uiPreset, setUiPreset] = useState(() => {
-        try {
-            const savedPreset = localStorage.getItem('uiPreset');
-            return savedPreset ? JSON.parse(savedPreset) : 'classic'; // 'classic' is the default
-        } catch (e) {
-            console.error("Could not parse uiPreset from localStorage", e);
-            return 'classic';
-        }
-    });
-
-    useEffect(() => {
-        try {
-            localStorage.setItem('uiPreset', JSON.stringify(uiPreset));
-        } catch (e) {
-            console.error("Could not save uiPreset to localStorage", e);
-        }
-    }, [uiPreset]);
-
-    const toggleUiPreset = () => {
-        setUiPreset(prevPreset => (prevPreset === 'classic' ? 'modern' : 'classic'));
-    };
-
-    // Dark Mode state (no changes)
-    const [darkMode, setDarkMode] = useState(() => {
-        try {
-            const savedMode = localStorage.getItem('darkMode');
-            return savedMode ? JSON.parse(savedMode) : false;
-        } catch (e) {
-            console.error("Could not parse dark mode from localStorage", e);
-            return false;
-        }
-    });
-
+    // Efectos para guardar presets y modo oscuro en localStorage
+    useEffect(() => { localStorage.setItem('uiPreset', uiPreset); }, [uiPreset]);
     useEffect(() => {
         document.body.classList.toggle('dark-mode', darkMode);
-        try {
-            localStorage.setItem('darkMode', JSON.stringify(darkMode));
-        } catch (e) {
-            console.error("Could not save dark mode to localStorage", e);
-        }
+        localStorage.setItem('darkMode', darkMode);
     }, [darkMode]);
 
-    const toggleDarkMode = () => setDarkMode(prevMode => !prevMode);
+    const toggleUiPreset = () => setUiPreset(p => (p === 'classic' ? 'modern' : 'classic'));
+    const toggleDarkMode = () => setDarkMode(p => !p);
 
-    // fetchData and role determination logic remain the same
+    // --- FETCHDATA REFACTORIZADO ---
     const fetchData = useCallback(async () => {
-        if (!currentUser) {
+        // La condición ahora es tener un companyId, no solo un usuario
+        if (!currentUser || !companyId) {
             setLoading(false);
             return;
         }
         setLoading(true);
         try {
-            const [
-                fieldsSnap, executivesSnap, criteriaSnap, nonEvaluableCriteriaSnap,
-                evaluationsSnap, subsectionsSnap, sectionsSnap, customTabsSnap, headerSnap
-            ] = await Promise.all([
-                getDocs(query(collection(db, 'executiveFields'), orderBy('order'))),
-                getDocs(query(collection(db, 'executives'), orderBy('Nombre'))),
-                getDocs(query(collection(db, 'criteria'), orderBy('name'))),
-                getDocs(query(collection(db, 'nonEvaluableCriteria'), orderBy('name'))),
-                getDocs(query(collection(db, 'evaluations'), orderBy('evaluationDate', 'desc'))),
-                getDocs(query(collection(db, 'aptitudeSubsections'), orderBy('order'))),
-                getDocs(query(collection(db, 'evaluationSections'), orderBy('order'))),
-                getDocs(collection(db, 'customTabs')),
-                getDocs(collection(db, 'headerInfo'))
-            ]);
-            
-            setExecutives(executivesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setCriteria(criteriaSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setNonEvaluableCriteria(nonEvaluableCriteriaSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setEvaluations(evaluationsSnap.docs.map(d => ({
-                id: d.id, ...d.data(),
-                evaluationDate: d.data().evaluationDate?.toDate(),
-                managementDate: d.data().managementDate?.toDate()
-            })));
-            setAptitudeSubsections(subsectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setCustomTabs(customTabsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            // Construimos la ruta base a los datos de la compañía
+            const companyRef = doc(db, 'companies', companyId);
+
+            const collectionsToFetch = {
+                executiveFields: query(collection(companyRef, 'executiveFields'), orderBy('order')),
+                executives: query(collection(companyRef, 'executives'), orderBy('Nombre')),
+                criteria: query(collection(companyRef, 'criteria'), orderBy('name')),
+                nonEvaluableCriteria: query(collection(companyRef, 'nonEvaluableCriteria'), orderBy('name')),
+                evaluations: query(collection(companyRef, 'evaluations'), orderBy('evaluationDate', 'desc')),
+                aptitudeSubsections: query(collection(companyRef, 'aptitudeSubsections'), orderBy('order')),
+                evaluationSections: query(collection(companyRef, 'evaluationSections'), orderBy('order')),
+                customTabs: collection(companyRef, 'customTabs'),
+                headerInfo: collection(companyRef, 'headerInfo') // Asumiendo que es una subcolección
+            };
+
+            const promises = Object.values(collectionsToFetch).map(getDocs);
+            const snapshots = await Promise.all(promises);
+            const keys = Object.keys(collectionsToFetch);
+
+            const data = snapshots.reduce((acc, snap, index) => {
+                acc[keys[index]] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                return acc;
+            }, {});
+
+            // Actualizamos todos los estados con los nuevos datos anidados
+            setExecutiveFields(data.executiveFields);
+            setExecutives(data.executives);
+            setCriteria(data.criteria);
+            setNonEvaluableCriteria(data.nonEvaluableCriteria);
+            setEvaluations(data.evaluations.map(e => ({...e, evaluationDate: e.evaluationDate?.toDate(), managementDate: e.managementDate?.toDate()})));
+            setAptitudeSubsections(data.aptitudeSubsections);
+            setEvaluationSections(data.evaluationSections);
+            setCustomTabs(data.customTabs);
+            if (data.headerInfo.length > 0) {
+                setHeaderInfo(data.headerInfo[0]);
+            }
+
         } catch (err) {
-            console.error("Error fetching global data:", err);
-            setError("Error al cargar los datos.");
+            console.error("Error fetching company data:", err);
+            setError("Error al cargar los datos de la compañía.");
         } finally {
             setLoading(false);
         }
-    }, [currentUser]);
+    }, [currentUser, companyId]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    
+
+    // --- LÓGICA DE ROL DE EJECUTIVO ---
     useEffect(() => {
-        if (!currentUser) {
-            setUserRole(null);
+        // Esta lógica ahora solo se encarga de encontrar el perfil del ejecutivo.
+        // El 'rol' ya viene del AuthContext.
+        if (userRole === 'executive' && executives.length > 0) {
+            const matchingExecutive = executives.find(exec => 
+                exec.Email && exec.Email.toLowerCase() === currentUser.email.toLowerCase()
+            );
+            setExecutiveData(matchingExecutive || null);
+        } else {
             setExecutiveData(null);
-            return;
         }
-        const determineRole = async () => {
-            const adminRef = doc(db, 'admins', currentUser.email);
-            const adminSnap = await getDoc(adminRef);
-            if (adminSnap.exists()) {
-                setUserRole('admin');
-                setExecutiveData(null);
-                return;
-            }
-            if (executives.length > 0) {
-                const matchingExecutive = executives.find(exec => 
-                    exec.Email && exec.Email.toLowerCase() === currentUser.email.toLowerCase()
-                );
-                if (matchingExecutive) {
-                    setUserRole('executive');
-                    setExecutiveData(matchingExecutive);
-                } else {
-                    setUserRole(null);
-                    setExecutiveData(null);
-                }
-            }
-        };
-        if (!loading) {
-            determineRole();
-        }
-    }, [currentUser, executives, loading]);
+    }, [currentUser, userRole, executives]);
 
     const value = {
-        // Data and user role
+        // Los datos de la compañía
         executives, criteria, nonEvaluableCriteria, evaluations, aptitudeSubsections,
-        executiveFields, evaluationSections, customTabs, headerInfo, headerInfoId,
-        userRole, executiveData,
-        // App state
+        executiveFields, evaluationSections, customTabs, headerInfo,
+        // El perfil del ejecutivo
+        executiveData,
+        // Estado de la app
         loading, error, darkMode, uiPreset,
-        // Functions
-        refreshData: fetchData, setExecutiveFields, setHeaderInfo,
-        setHeaderInfoId, toggleDarkMode, toggleUiPreset,
+        // Funciones
+        refreshData: fetchData,
+        toggleDarkMode,
+        toggleUiPreset,
     };
 
     return (
