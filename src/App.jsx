@@ -5,7 +5,7 @@ import { useAuth } from './context/AuthContext';
 
 // Layouts
 import ClassicLayout from './layouts/ClassicLayout'; 
-import ModernLayout from './layouts/ModernLayout'; // Ahora se usará
+import ModernLayout from './layouts/ModernLayout';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -28,7 +28,11 @@ import './styles/dark-mode.css';
 
 const AppLayoutController = () => {
     const { uiPreset, loading: globalLoading, error } = useGlobalContext();
-    const { loading: authLoading } = useAuth();
+    
+    // --- CORRECCIÓN ---
+    // Hacemos la llamada en dos pasos para evitar el error del transpilador.
+    const auth = useAuth();
+    const authLoading = auth.loading;
 
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
@@ -38,7 +42,6 @@ const AppLayoutController = () => {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>{error}</h1></div>;
     }
     
-    // Ahora esta lógica está activa
     if (uiPreset === 'modern') {
         return <ModernLayout />;
     }
@@ -61,14 +64,14 @@ function App() {
                     </ProtectedRoute>
                 }
             >
-                {/* Las rutas anidadas son renderizadas por el <Outlet /> en cada layout */}
+                {/* Rutas anidadas renderizadas por <Outlet /> */}
                 <Route index element={<Dashboard />} />
                 <Route path="team" element={<Team />} />
                 <Route path="correos" element={<CorreosYCasos />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />
-                <Route path="reportes-de-area" element={<ProtectedRoute allowedRoles={['admin']}><ReportesDeArea /></ProtectedRoute>} />
-                <Route path="evaluate" element={<ProtectedRoute allowedRoles={['admin']}><Evaluate /></ProtectedRoute>} />
-                <Route path="configuration" element={<ProtectedRoute allowedRoles={['admin']}><Configuration /></ProtectedRoute>} />
+                <Route path="reportes-de-area" element={<ProtectedRoute allowedRoles={['superadmin']}><ReportesDeArea /></ProtectedRoute>} />
+                <Route path="evaluate" element={<ProtectedRoute allowedRoles={['superadmin']}><Evaluate /></ProtectedRoute>} />
+                <Route path="configuration" element={<ProtectedRoute allowedRoles={['superadmin']}><Configuration /></ProtectedRoute>} />
             </Route>
             
             <Route path="/app/*" element={<Navigate to="/dashboard" replace />} />

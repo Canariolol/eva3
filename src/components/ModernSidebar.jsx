@@ -5,11 +5,10 @@ import { useGlobalContext } from '../context/GlobalContext';
 import DarkModeToggle from './DarkModeToggle';
 import { FiGrid, FiUsers, FiEdit, FiSettings, FiMail, FiFileText, FiLogOut } from 'react-icons/fi';
 
-// Importa los nuevos estilos para la sidebar moderna
 import './ModernSidebar.css';
 
 const ModernSidebar = () => {
-    const { userRole, logout } = useAuth();
+    const { userRole, logout } = useAuth(); // Obtenemos el nuevo rol del AuthContext
     const { customTabs } = useGlobalContext();
 
     return (
@@ -24,7 +23,8 @@ const ModernSidebar = () => {
                 <NavLink to="/dashboard/team"><FiUsers /><span>Mi Equipo</span></NavLink>
                 <NavLink to="/dashboard/correos"><FiMail /><span>Correos y Casos</span></NavLink>
                 
-                {userRole === 'admin' && (
+                {/* --- CAMBIO DE LÓGICA DE ROL --- */}
+                {userRole === 'superadmin' && (
                     <NavLink to="/dashboard/reportes-de-area"><FiFileText /><span>Reportes de Área</span></NavLink>
                 )}
 
@@ -39,7 +39,8 @@ const ModernSidebar = () => {
             </nav>
             <div className="sidebar-footer">
                 <p className="nav-section-title">Configuración</p>
-                {userRole === 'admin' && (
+                {/* --- CAMBIO DE LÓGICA DE ROL --- */}
+                {userRole === 'superadmin' && (
                     <>
                         <NavLink to="/dashboard/evaluate"><FiEdit /><span>Evaluar</span></NavLink>
                         <NavLink to="/dashboard/configuration"><FiSettings /><span>Configuración</span></NavLink>
