@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getFunctions } from "firebase/functions"; // <-- 1. IMPORTAR FUNCTIONS
 
@@ -26,3 +26,25 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 // --- 2. INICIALIZAR Y EXPORTAR FUNCTIONS ---
 export const functions = getFunctions(app, "southamerica-west1");
+
+// --- NUEVA FUNCIÓN PARA SUPERADMIN ---
+/**
+ * Obtiene una lista de todas las compañías.
+ * Esta función debería estar protegida por reglas de Firestore
+ * para asegurar que solo un 'superadmin' pueda llamarla.
+ */
+export const getAllCompanies = async () => {
+    try {
+        const companiesCol = collection(db, 'companies');
+        const companySnapshot = await getDocs(companiesCol);
+        const companyList = companySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        return companyList;
+    } catch (error) {
+        console.error("Error fetching companies:", error);
+        // Retorna un array vacío en caso de error para evitar que la UI se rompa
+        return [];
+    }
+};

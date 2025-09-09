@@ -97,4 +97,4 @@ This flow details how a `manager` interacts with the advanced tools to gain deep
 *   **Multi-Tenant Architecture:** Securely supports multiple distinct client companies on the same platform.
 *   **UI Presets:** Users can switch between a "classic" and a "modern" interface.
 *   **Advanced Tools:** A dedicated section for high-value features, now including **savable filter configurations** and **fully functional AI and Gmail analysis**.
-
+*   **Configuration Presets:** Users will be able to choose to use the default configuration preset for their evaluations and reports or customize it to their liking. Default preset mainly focuses on Help Desk workgroups with 3 main Evaluations: Quality, Soft Skills and Self-Assesment. Each with its own subsections and criteria.

@@ -8,7 +8,7 @@ const GlobalContext = createContext();
 export const useGlobalContext = () => useContext(GlobalContext);
 
 export const GlobalProvider = ({ children }) => {
-    const { currentUser, companyId, userRole } = useAuth();
+    const { currentUser, companyId: authCompanyId, userRole } = useAuth(); // Renombramos companyId para claridad
     
     // Estados de datos
     const [executives, setExecutives] = useState([]);
@@ -28,7 +28,9 @@ export const GlobalProvider = ({ children }) => {
     const [uiPreset, setUiPreset] = useState(() => localStorage.getItem('uiPreset') || 'classic');
     const [darkMode, setDarkMode] = useState(() => (localStorage.getItem('darkMode') === 'true'));
     
-    // --- NUEVO ESTADO PARA EL WIZARD ---
+    // --- ESTADO PARA SUPERADMIN ---
+    const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+    
     const [showOnboarding, setShowOnboarding] = useState(false);
 
     useEffect(() => { localStorage.setItem('uiPreset', uiPreset); }, [uiPreset]);
@@ -41,13 +43,16 @@ export const GlobalProvider = ({ children }) => {
     const toggleDarkMode = () => setDarkMode(p => !p);
 
     const fetchData = useCallback(async () => {
-        if (!currentUser || !companyId) {
+        // Determinamos qué companyId usar
+        const companyIdToFetch = userRole === 'superadmin' ? selectedCompanyId : authCompanyId;
+
+        if (!currentUser || !companyIdToFetch) {
             setLoading(false);
             return;
         }
         setLoading(true);
         try {
-            const companyRef = doc(db, 'companies', companyId);
+            const companyRef = doc(db, 'companies', companyIdToFetch);
             const collectionsToFetch = {
                 executives: collection(companyRef, 'executives'),
                 headerInfo: collection(companyRef, 'headerInfo'),
@@ -63,11 +68,13 @@ export const GlobalProvider = ({ children }) => {
             
             if (!headerSnap.empty) {
                 setHeaderInfo(headerSnap.docs[0].data());
-                 // --- LÓGICA DEL WIZARD ---
-                // Si no hay industria, es un usuario nuevo.
                 if (!headerSnap.docs[0].data().industry && userRole === 'manager') {
                     setShowOnboarding(true);
                 }
+            } else {
+                 // Si no hay headerInfo (ej. el superadmin cambia a una compañía nueva)
+                 // reseteamos la información para no mostrar datos viejos.
+                setHeaderInfo({ company: 'N/A', area: 'N/A', manager: 'N/A' });
             }
             
         } catch (err) {
@@ -76,11 +83,17 @@ export const GlobalProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [currentUser, companyId, userRole]);
+    }, [currentUser, authCompanyId, userRole, selectedCompanyId]); // Agregamos selectedCompanyId a las dependencias
 
     useEffect(() => {
+        // Si el usuario es superadmin, esperamos a que se seleccione una compañía
+        // Si no, cargamos los datos inmediatamente.
+        if (userRole === 'superadmin' && !selectedCompanyId) {
+            // Podríamos establecer un estado de "esperando selección" aquí si quisiéramos
+            return;
+        }
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, userRole, selectedCompanyId]);
 
     const value = {
         executives, criteria, nonEvaluableCriteria, evaluations, aptitudeSubsections,
@@ -89,7 +102,9 @@ export const GlobalProvider = ({ children }) => {
         refreshData: fetchData,
         toggleDarkMode,
         toggleUiPreset,
-        setShowOnboarding // Exponemos la función para poder cerrar el wizard
+        setShowOnboarding,
+        setSelectedCompanyId, // Exponemos la función para que el Header la use
+        selectedCompanyId
     };
 
     return (
