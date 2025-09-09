@@ -1,12 +1,10 @@
 # Product Requirements Document (PRD): TeamInsight SaaS
 
 ## 1. Vision and Objective
-
 *   **Vision:** To provide leaders (`Managers`) with an intuitive and powerful SaaS platform for evaluating team performance, tracking progress over time, and making data-driven decisions.
 *   **Objective:** To define and document the core user flows, security model, and feature set for the multi-tenant version of TeamInsight. This document will serve as a single source of truth for development.
 
 ## 2. User Personas & Roles
-
 | Role | Description | Key Permissions & Responsibilities |
 | :--- | :--- | :--- |
 | **`superadmin`** | Platform owner/administrator (internal use). | **Total Control:** Full CRUD access to all data across all companies for support, maintenance, and analytics. |
@@ -46,18 +44,57 @@ This flow details the journey of a new client from discovery to achieving their 
     *   **Action:** The user now sees the dashboard populated with data from the evaluation they just completed.
     *   **Final Step:** The user navigates to the "Reportes" page, sees the summarized data, and can use the "Export" function to download a CSV.
 
-## 4. Security & Data Model
+## 4. User Flow: Advanced Tools
 
+This flow details how a `manager` interacts with the advanced tools to gain deeper insights.
+
+
+
+1.  **Accessing Tools:**
+    *   **Entry Point:** The user navigates to the "Herramientas" tab from the sidebar.
+    *   **Interface:** The user is presented with two primary tools: "Analizador de Documentos IA" and "Integración Gmail".
+
+2.  **Gmail Integration Flow:**
+    *   **Action:** The user interacts with the "Integración Gmail" card.
+    *   **Saved Filters:** The user sees a dropdown of "Configuraciones Guardadas".
+        *   **Default Filters:** `superadmin` and specific users (e.g., `catherine.trivino@west-ingenieria.cl`) will see pre-configured, powerful filters.
+        *   **Custom Saved Filters:** Regular `managers` can create and save their own filter configurations for reuse.
+    *   **Filtering:** The user can either select a saved filter or fill out the dynamic filter fields (From, To, Subject, etc.) manually.
+    *   **Execution:** The user clicks "Buscar en Gmail".
+    *   **Result Modal:** A `ResultsModal` appears, displaying a preview of the emails found.
+    *   **Interaction:** The modal supports "Close" and "Minimize" actions.
+
+3.  **AI Document Analyzer Flow:**
+    *   **Action:** The user interacts with the "Analizador de Documentos IA" card.
+    *   **Input:** The user uploads a document (e.g., PDF, DOCX) and types a specific prompt (e.g., "Resume los puntos clave de este informe").
+    *   **Execution:** The user clicks "Analizar".
+    *   **Result Modal:** The same `ResultsModal` appears, displaying the AI-generated analysis of the document.
+    *   **Interaction:** The modal has the same "Close" and "Minimize" functionality.
+    
+**4. Next Steps: Making Tools Functional**
+*   **Objective:** Transition the advanced tools from UI mockups with simulated responses to fully functional features.
+*   **Gmail Integration:**
+    *   Adapt the existing Cloud Function logic from `functions/main.py` to handle dynamic filters passed from the frontend.
+    *   The function must still support the hardcoded, permission-based filters for `superadmin` and specific users.
+    *   The frontend will be updated to display the real email data returned by the function in the `ResultsModal`.
+*   **AI Document Analyzer:**
+    *   Create a new Cloud Function that accepts a file and a text prompt.
+    *   This function will act as a secure backend to call a third-party Generative AI API (e.g., Google's Gemini API).
+    *   The frontend will handle file uploads to a secure storage (like Cloud Storage) and pass the reference to the function.
+    *   The AI-generated response will be streamed or returned to be displayed in the `ResultsModal`.
+
+## 5. Security & Data Model
 *   **Data Isolation:** The primary security principle is strict data isolation between tenants (companies). This is enforced by:
     1.  **Firestore Structure:** All tenant-specific data (evaluations, executives, etc.) **must** reside in subcollections under `/companies/{companyId}`.
     2.  **Firestore Rules:** Security rules will heavily rely on checking `request.auth.token.companyId` to ensure a user can only access documents matching their assigned `companyId`.
 *   **Authentication:** Firebase Authentication is the source of truth for user identity. Custom Claims are used to efficiently pass authorization data (`role`, `companyId`) to Firestore security rules.
 *   **Roles:** User roles (`superadmin`, `manager`, `executive`) are stored in the `/users/{uid}` collection and mirrored in Custom Claims for security rule enforcement.
 
-## 5. Key Features (High-Level)
-
+## 6. Key Features (High-Level)
 *   **User Management:** Managers can add, edit, and remove executives from their team.
 *   **Evaluation System:** A flexible system for creating and filling out performance evaluations based on customizable criteria.
 *   **Dashboard & Reporting:** Visual dashboards with key metrics, trend graphs, and the ability to export detailed reports.
 *   **Multi-Tenant Architecture:** Securely supports multiple distinct client companies on the same platform.
 *   **UI Presets:** Users can switch between a "classic" and a "modern" interface.
+*   **Advanced Tools:** A dedicated section for high-value features, now including **savable filter configurations** and **fully functional AI and Gmail analysis**.
+

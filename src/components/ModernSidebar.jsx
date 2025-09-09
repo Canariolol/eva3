@@ -10,13 +10,9 @@ import {
 import './ModernSidebar.css';
 
 const ModernSidebar = () => {
-    // --- CORRECCIÓN ---
-    // Hacemos la llamada en dos pasos para evitar el error.
     const auth = useAuth();
     const userRole = auth.userRole;
     const logout = auth.logout;
-
-    const { customTabs } = useGlobalContext();
 
     return (
         <aside className="modern-sidebar">
@@ -34,7 +30,8 @@ const ModernSidebar = () => {
                 <NavItem to="/dashboard" icon={<BarChart3 />} label="Dashboard" />
                 <NavItem to="/dashboard/team" icon={<Users />} label="Equipo" />
                 <NavItem to="/dashboard/evaluate" icon={<ClipboardCheck />} label="Evaluar" />
-                <NavItem to="/dashboard/correos" icon={<Wrench />} label="Herramientas" />
+                {/* --- ENLACE ACTUALIZADO --- */}
+                <NavItem to="/dashboard/herramientas" icon={<Wrench />} label="Herramientas" />
                 <NavItem to="/dashboard/reportes-de-area" icon={<FileText />} label="Reportes" />
                 <NavItem to="/dashboard/contactos" icon={<Contact />} label="Contactos" />
                 <NavItem to="/dashboard/alertas" icon={<Bell />} label="Alertas" alertCount={3} />

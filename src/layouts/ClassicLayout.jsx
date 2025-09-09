@@ -12,7 +12,8 @@ import DarkModeToggle from '../components/DarkModeToggle';
 
 const ClassicLayout = () => {
     const { customTabs } = useGlobalContext();
-    const { userRole } = useAuth(); // Obtenemos el nuevo rol del AuthContext
+    const auth = useAuth();
+    const userRole = auth.userRole;
     const location = useLocation();
     const projectId = db.app.options.projectId;
     const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -34,9 +35,9 @@ const ClassicLayout = () => {
                 <ul className="nav-list">
                     <li><NavLink to="/dashboard" end><FiGrid /><span>Dashboard</span></NavLink></li>
                     <li><NavLink to="/dashboard/team"><FiUsers /><span>Equipo</span></NavLink></li>
-                    <li><NavLink to="/dashboard/correos"><FiMail /><span>Correos & Casos</span></NavLink></li>
+                    {/* --- ENLACE ACTUALIZADO --- */}
+                    <li><NavLink to="/dashboard/herramientas"><FiMail /><span>Herramientas</span></NavLink></li>
                     
-                    {/* --- CAMBIO DE LÓGICA DE ROL --- */}
                     {userRole === 'superadmin' && (
                         <li><NavLink to="/dashboard/reportes-de-area"><FiFileText /><span>Reportes de Área</span></NavLink></li>
                     )}
@@ -45,7 +46,6 @@ const ClassicLayout = () => {
                         <li key={tab.id}><NavLink to={`/dashboard/tabs/${tab.id}`}><FiEdit /><span>{tab.name}</span></NavLink></li>
                     ))}
 
-                    {/* --- CAMBIO DE LÓGICA DE ROL --- */}
                     {userRole === 'superadmin' && (
                         <>
                             <li><NavLink to="/dashboard/evaluate"><FiEdit /><span>Evaluar</span></NavLink></li>

@@ -3,9 +3,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 
-// Componentes y Páginas
+// Layouts
 import ClassicLayout from './layouts/ClassicLayout'; 
 import ModernLayout from './layouts/ModernLayout';
+
+// Pages
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import ModernDashboard from './pages/ModernDashboard';
@@ -13,16 +15,18 @@ import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import CustomTab from './pages/CustomTab';
-import CorreosYCasos from './pages/CorreosYCasos';
+import Herramientas from './pages/Herramientas'; // <-- NOMBRE ACTUALIZADO
 import ReportesDeArea from './pages/ReportesDeArea';
 import Alertas from './pages/Alertas';
 import Contactos from './pages/Contactos';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import ProtectedRoute from './components/ProtectedRoute';
-import OnboardingWizard from './components/OnboardingWizard'; // <-- IMPORTAMOS EL WIZARD
 
-// Estilos
+// Components
+import ProtectedRoute from './components/ProtectedRoute';
+import OnboardingWizard from './components/OnboardingWizard';
+
+// Styles
 import './App.css';
 import './styles/dark-mode.css';
 
@@ -38,12 +42,10 @@ const AppLayoutController = () => {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>{error}</h1></div>;
     }
 
-    // Lógica para mostrar el Wizard
     if (showOnboarding) {
         return <OnboardingWizard user={currentUser} onFinish={() => setShowOnboarding(false)} />;
     }
     
-    // Si no se muestra el wizard, renderiza el layout normal
     return uiPreset === 'modern' ? <ModernLayout /> : <ClassicLayout />;
 };
 
@@ -69,7 +71,8 @@ function App() {
             >
                 <Route index element={<DashboardController />} />
                 <Route path="team" element={<Team />} />
-                <Route path="correos" element={<CorreosYCasos />} />
+                {/* --- RUTA ACTUALIZADA --- */}
+                <Route path="herramientas" element={<Herramientas />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />
                 <Route path="alertas" element={<Alertas />} />
                 <Route path="contactos" element={<Contactos />} />
