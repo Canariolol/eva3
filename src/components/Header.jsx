@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGlobalContext } from '../context/GlobalContext';
-import { getAllCompanies } from '../firebase'; // Importamos la nueva función
+import { getAllCompanies } from '../firebase';
 import Login from './Login';
 import './Header.css';
 
 const Header = () => {
-    const { headerInfo, setSelectedCompanyId } = useGlobalContext();
+    // 1. Obtenemos los nuevos estados y funciones del GlobalContext
+    const { 
+        headerInfo, 
+        setSelectedCompanyId,
+        availableWorkgroups, 
+        selectedWorkgroupId, 
+        setSelectedWorkgroupId 
+    } = useGlobalContext();
+
     const { currentUser, logout, userRole } = useAuth();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     
-    // --- ESTADOS PARA SUPERADMIN ---
+    // Estados para Superadmin
     const [companies, setCompanies] = useState([]);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
 
     useEffect(() => {
-        // Si el usuario es superadmin, cargamos la lista de compañías
         if (userRole === 'superadmin') {
             const fetchCompanies = async () => {
                 const companyList = await getAllCompanies();
                 setCompanies(companyList);
-                // Opcional: seleccionar la primera compañía por defecto
                 if (companyList.length > 0) {
-                    setCurrentCompanyId(companyList[0].id);
-                    setSelectedCompanyId(companyList[0].id);
+                    const firstCompanyId = companyList[0].id;
+                    setCurrentCompanyId(firstCompanyId);
+                    setSelectedCompanyId(firstCompanyId); // Esto disparará el efecto en GlobalContext para buscar workgroups
                 }
             };
             fetchCompanies();
@@ -41,7 +48,14 @@ const Header = () => {
     const handleCompanyChange = (e) => {
         const newCompanyId = e.target.value;
         setCurrentCompanyId(newCompanyId);
-        setSelectedCompanyId(newCompanyId); // Actualizamos el contexto global
+        setSelectedCompanyId(newCompanyId);
+        // El workgroup se seleccionará automáticamente por defecto en el GlobalContext
+    };
+
+    // 3. Nueva función para manejar el cambio de workgroup
+    const handleWorkgroupChange = (e) => {
+        const newWorkgroupId = e.target.value;
+        setSelectedWorkgroupId(newWorkgroupId);
     };
 
     return (
@@ -51,15 +65,31 @@ const Header = () => {
                     {userRole === 'superadmin' ? (
                         <>
                             <h1 className="area-name">Bienvenido, Superadmin</h1>
-                            <div className="company-selector">
-                                <label htmlFor="company-select">Viendo datos de:</label>
-                                <select id="company-select" value={currentCompanyId} onChange={handleCompanyChange}>
-                                    {companies.map(company => (
-                                        <option key={company.id} value={company.id}>
-                                            {company.headerInfo?.company || company.id}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="company-selector-group">
+                                <div className="company-selector">
+                                    <label htmlFor="company-select">Compañía:</label>
+                                    <select id="company-select" value={currentCompanyId} onChange={handleCompanyChange}>
+                                        {companies.map(company => (
+                                            <option key={company.id} value={company.id}>
+                                                {company.headerInfo?.company || company.id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                {/* 2. Renderizado condicional del nuevo desplegable de Workgroups */}
+                                {availableWorkgroups.length > 0 && (
+                                    <div className="company-selector">
+                                        <label htmlFor="workgroup-select">Grupo de Trabajo:</label>
+                                        <select id="workgroup-select" value={selectedWorkgroupId || ''} onChange={handleWorkgroupChange}>
+                                            {availableWorkgroups.map(wg => (
+                                                <option key={wg.id} value={wg.id}>
+                                                    {wg.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         </>
                     ) : (

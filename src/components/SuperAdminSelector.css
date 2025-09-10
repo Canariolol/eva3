@@ -1,0 +1,98 @@
+/* SuperAdminSelector.css */
+
+.super-admin-selector {
+    position: relative;
+    display: inline-block;
+}
+
+.selector-button {
+    background-color: var(--color-background-light);
+    color: var(--color-text-primary);
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.selector-button:hover {
+    background-color: var(--color-background-hover);
+}
+
+.selector-button.dark {
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-dark-primary);
+    border-color: var(--color-border-dark);
+}
+
+.selector-button.dark:hover {
+    background-color: var(--color-background-dark-hover);
+}
+
+.selector-dropdown {
+    position: absolute;
+    top: 110%;
+    right: 0;
+    background-color: var(--color-background-light);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    width: 280px;
+    overflow: hidden;
+}
+
+.selector-dropdown.dark {
+    background-color: var(--color-background-dark-light);
+    border-color: var(--color-border-dark);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.selector-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+}
+.selector-item:last-child {
+    border-bottom: none;
+}
+
+
+.selector-item.dark {
+    border-bottom-color: var(--color-border-dark);
+}
+
+.selector-item:hover {
+    background-color: var(--color-background-hover);
+}
+
+.selector-item.dark:hover {
+    background-color: var(--color-background-dark-hover);
+}
+
+.selector-item.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+.selector-item.active.dark {
+    background-color: var(--color-primary-dark);
+}
+
+.selector-header {
+    padding: 8px 15px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+}
+.selector-header.dark {
+    color: var(--color-text-dark-secondary);
+    background-color: var(--color-background-dark);
+    border-bottom-color: var(--color-border-dark);
+}

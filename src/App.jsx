@@ -3,9 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 
-// Layouts
-import ClassicLayout from './layouts/ClassicLayout'; 
-import ModernLayout from './layouts/ModernLayout';
+// Layout
+import ModernLayout from './layouts/ModernLayout'; // <-- Solo importamos ModernLayout
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -15,7 +14,7 @@ import Team from './pages/Team';
 import Evaluate from './pages/Evaluate';
 import Configuration from './pages/Configuration';
 import CustomTab from './pages/CustomTab';
-import Herramientas from './pages/Herramientas'; // <-- NOMBRE ACTUALIZADO
+import Herramientas from './pages/Herramientas';
 import ReportesDeArea from './pages/ReportesDeArea';
 import Alertas from './pages/Alertas';
 import Contactos from './pages/Contactos';
@@ -30,10 +29,17 @@ import OnboardingWizard from './components/OnboardingWizard';
 import './App.css';
 import './styles/dark-mode.css';
 
-const AppLayoutController = () => {
-    const { uiPreset, loading: globalLoading, error, showOnboarding, setShowOnboarding } = useGlobalContext();
-    const { currentUser, loading: authLoading } = useAuth();
+// Este componente ahora decide QUÉ dashboard mostrar, no qué layout usar
+const DashboardController = () => {
+    const { dashboardType } = useGlobalContext();
+    return dashboardType === 'modern' ? <ModernDashboard /> : <Dashboard />;
+};
 
+function App() {
+    const { loading: globalLoading, error } = useGlobalContext();
+    const { currentUser, loading: authLoading } = useAuth();
+    
+    // La pantalla de carga principal ahora se maneja aquí, antes de las rutas
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
     }
@@ -42,36 +48,24 @@ const AppLayoutController = () => {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>{error}</h1></div>;
     }
 
-    if (showOnboarding) {
-        return <OnboardingWizard user={currentUser} onFinish={() => setShowOnboarding(false)} />;
-    }
-    
-    return uiPreset === 'modern' ? <ModernLayout /> : <ClassicLayout />;
-};
-
-const DashboardController = () => {
-    const { uiPreset } = useGlobalContext();
-    return uiPreset === 'modern' ? <ModernDashboard /> : <Dashboard />;
-};
-
-function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             
+            {/* Todas las rutas protegidas ahora usan ModernLayout como contenedor */}
             <Route 
                 path="/dashboard" 
                 element={
                     <ProtectedRoute>
-                        <AppLayoutController />
+                        <ModernLayout />
                     </ProtectedRoute>
                 }
             >
+                {/* La ruta 'index' usa el DashboardController para alternar entre vistas */}
                 <Route index element={<DashboardController />} />
                 <Route path="team" element={<Team />} />
-                {/* --- RUTA ACTUALIZADA --- */}
                 <Route path="herramientas" element={<Herramientas />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />
                 <Route path="alertas" element={<Alertas />} />

@@ -16,9 +16,10 @@ export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
     
-    // --- NUEVOS ESTADOS PARA ROLES Y COMPANY ID ---
+    // Estados para los custom claims del usuario
     const [userRole, setUserRole] = useState(null);
     const [companyId, setCompanyId] = useState(null);
+    const [workgroupId, setWorkgroupId] = useState(null);
 
     const login = (email, password) => {
         return signInWithEmailAndPassword(auth, email, password);
@@ -34,23 +35,26 @@ export const AuthProvider = ({ children }) => {
 
             if (user) {
                 try {
-                    // Obtenemos el token y sus claims
-                    const tokenResult = await user.getIdTokenResult(true); // true fuerza la actualización
-                    const claims = tokenResult.claims;
+                    const idTokenResult = await user.getIdTokenResult();
+                    const claims = idTokenResult.claims;
                     
-                    // Asignamos los claims a nuestros estados
+                    // Seteamos los estados con los valores de los claims
                     setUserRole(claims.role || null);
                     setCompanyId(claims.companyId || null);
+                    setWorkgroupId(claims.workgroupId || null);
 
                 } catch (error) {
-                    console.error("Error fetching custom claims:", error);
+                    console.error("Error fetching user claims:", error);
+                    // Limpiamos en caso de error
                     setUserRole(null);
                     setCompanyId(null);
+                    setWorkgroupId(null);
                 }
             } else {
                 // Si no hay usuario, reseteamos los estados
                 setUserRole(null);
                 setCompanyId(null);
+                setWorkgroupId(null);
             }
             
             setLoading(false);
@@ -61,8 +65,9 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         currentUser,
-        userRole, // <-- Se expone el rol
-        companyId, // <-- Se expone el companyId
+        userRole,
+        companyId,
+        workgroupId,
         login,
         logout,
         loading

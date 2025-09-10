@@ -1,72 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGlobalContext } from '../context/GlobalContext';
-import { getAllCompanies } from '../firebase'; // 1. Importar
-import { Sun, Moon, ChevronDown } from 'lucide-react'; // ChevronDown para el selector
+import SuperAdminSelector from './SuperAdminSelector'; // 1. Importar el nuevo componente
+import { Sun, Moon, LayoutDashboard, Layout } from 'lucide-react';
 
 const ModernHeader = () => {
-    // 2. Obtener userRole y funciones del contexto
     const { currentUser, userRole } = useAuth();
-    const { headerInfo, darkMode, toggleDarkMode, setSelectedCompanyId } = useGlobalContext();
-
-    // 3. Estados para el superadmin
-    const [companies, setCompanies] = useState([]);
-    const [currentCompanyId, setCurrentCompanyId] = useState('');
-
-    // 4. Efecto para cargar las compañías si es superadmin
-    useEffect(() => {
-        if (userRole === 'superadmin') {
-            const fetchCompanies = async () => {
-                const companyList = await getAllCompanies();
-                setCompanies(companyList);
-                if (companyList.length > 0) {
-                    // Inicializa el selector con la primera compañía o la que esté en el contexto global
-                    const initialId = companyList[0].id;
-                    setCurrentCompanyId(initialId);
-                    setSelectedCompanyId(initialId);
-                }
-            };
-            fetchCompanies();
-        }
-    }, [userRole, setSelectedCompanyId]);
-
+    // 2. Obtener los nuevos estados/setters del contexto
+    const { headerInfo, darkMode, toggleDarkMode, dashboardType, setDashboardType } = useGlobalContext();
 
     const getInitials = (name) => {
-        if (!name) return 'SA'; // Super Admin
+        if (!name) return 'SA';
         const names = name.split(' ');
         if (names.length === 1) return names[0].charAt(0).toUpperCase();
         return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
     };
     
-    // 5. Handler para el cambio de compañía
-    const handleCompanyChange = (e) => {
-        const newCompanyId = e.target.value;
-        setCurrentCompanyId(newCompanyId);
-        setSelectedCompanyId(newCompanyId);
-    };
-
     return (
         <header className="bg-white dark:bg-zinc-800 shadow-sm border-b border-gray-100 dark:border-zinc-700 px-8 py-6">
             <div className="flex items-center justify-between">
-                {/* 6. Renderizado condicional */}
+                {/* 3. Reemplazar el <select> con el nuevo componente SuperAdminSelector */}
                 {userRole === 'superadmin' ? (
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                             Vista de Superadmin
                         </h2>
-                        <div className="relative mt-2">
-                             <select 
-                                value={currentCompanyId} 
-                                onChange={handleCompanyChange}
-                                className="appearance-none w-full md:w-auto bg-gray-50 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-2.5 pr-8"
-                            >
-                                {companies.map(company => (
-                                    <option key={company.id} value={company.id}>
-                                        {company.headerInfo?.company || company.id}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown size={18} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <div className="mt-2">
+                           <SuperAdminSelector />
                         </div>
                     </div>
                 ) : (
@@ -81,12 +41,23 @@ const ModernHeader = () => {
                 )}
                 
                 <div className="flex items-center space-x-6">
+                    {/* 4. Interruptor para el tipo de Dashboard */}
+                    <button 
+                        onClick={() => setDashboardType(dashboardType === 'modern' ? 'classic' : 'modern')} 
+                        className="p-3 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-700"
+                        title={dashboardType === 'modern' ? "Cambiar a Dashboard Clásico" : "Cambiar a Dashboard Moderno"}
+                    >
+                        {dashboardType === 'modern' ? <Layout size={20} /> : <LayoutDashboard size={20} />}
+                    </button>
+
                     <button 
                         onClick={toggleDarkMode} 
                         className="p-3 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-700"
+                        title={darkMode ? "Activar Modo Claro" : "Activar Modo Oscuro"}
                     >
                         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
+
                     <div className="flex items-center space-x-4">
                         <div className="text-right">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
