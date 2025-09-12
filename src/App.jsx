@@ -4,7 +4,7 @@ import { useGlobalContext } from './context/GlobalContext';
 import { useAuth } from './context/AuthContext';
 
 // Layout
-import ModernLayout from './layouts/ModernLayout'; // <-- Solo importamos ModernLayout
+import ModernLayout from './layouts/ModernLayout';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -29,7 +29,6 @@ import OnboardingWizard from './components/OnboardingWizard';
 import './App.css';
 import './styles/dark-mode.css';
 
-// Este componente ahora decide QUÉ dashboard mostrar, no qué layout usar
 const DashboardController = () => {
     const { dashboardType } = useGlobalContext();
     return dashboardType === 'modern' ? <ModernDashboard /> : <Dashboard />;
@@ -39,7 +38,6 @@ function App() {
     const { loading: globalLoading, error } = useGlobalContext();
     const { currentUser, loading: authLoading } = useAuth();
     
-    // La pantalla de carga principal ahora se maneja aquí, antes de las rutas
     if (authLoading || globalLoading) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><h1>Cargando aplicación...</h1></div>;
     }
@@ -54,7 +52,6 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             
-            {/* Todas las rutas protegidas ahora usan ModernLayout como contenedor */}
             <Route 
                 path="/dashboard" 
                 element={
@@ -63,16 +60,24 @@ function App() {
                     </ProtectedRoute>
                 }
             >
-                {/* La ruta 'index' usa el DashboardController para alternar entre vistas */}
                 <Route index element={<DashboardController />} />
                 <Route path="team" element={<Team />} />
                 <Route path="herramientas" element={<Herramientas />} />
                 <Route path="tabs/:tabId" element={<CustomTab />} />
                 <Route path="alertas" element={<Alertas />} />
                 <Route path="contactos" element={<Contactos />} />
+                {/* 1. Rutas protegidas por rol específico */}
                 <Route path="reportes-de-area" element={<ProtectedRoute allowedRoles={['superadmin']}><ReportesDeArea /></ProtectedRoute>} />
                 <Route path="evaluate" element={<ProtectedRoute allowedRoles={['superadmin']}><Evaluate /></ProtectedRoute>} />
-                <Route path="configuration" element={<ProtectedRoute allowedRoles={['superadmin']}><Configuration /></ProtectedRoute>} />
+                {/* 2. Ruta de configuración ahora solo para manager y superadmin */}
+                <Route 
+                    path="configuration" 
+                    element={
+                        <ProtectedRoute allowedRoles={['superadmin', 'manager']}>
+                            <Configuration />
+                        </ProtectedRoute>
+                    } 
+                />
             </Route>
             
             <Route path="/app/*" element={<Navigate to="/dashboard" replace />} />

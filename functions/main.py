@@ -68,16 +68,44 @@ def set_superadmin_claim(req: https_fn.CallableRequest):
     except Exception as e:
         raise https_fn.HttpsError(code="internal", message=str(e))
 
-# --- API DE GMAIL (NUEVA LÓGICA REFACTORIZADA) ---
+# --- API DE GMAIL Y CONTACTO ---
 app = Flask(__name__)
 CORS(app)
+
+# --- Ruta para el formulario de contacto ---
+@app.route('/api/contact', methods=['POST'])
+def handle_contact():
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        email = data.get('email')
+        message = data.get('message')
+
+        if not name or not email or not message:
+            return jsonify({"error": "Todos los campos son requeridos."}), 400
+
+        # Simulación de envío de correo
+        print("--- NUEVO MENSAJE DE CONTACTO ---")
+        print(f"Nombre: {name}")
+        print(f"Email: {email}")
+        print(f"Mensaje: {message}")
+        print("---------------------------------")
+        
+        # Aquí iría la lógica real de envío de correo (ej. con SendGrid, etc.)
+
+        return jsonify({"message": "Mensaje recibido con éxito."}), 200
+
+    except Exception as e:
+        print(f"Error en handle_contact: {e}")
+        return jsonify({"error": "Ocurrió un error en el servidor."}), 500
+
 
 # --- Funciones de Ayuda para Gmail ---
 def get_credentials_from_request(req):
     auth_header = req.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '): return None
     token = auth_header.split(' ')[1]
-    CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "") # Es importante configurar esta variable de entorno
+    CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     return Credentials(token=token, client_id=CLIENT_ID)
 
 def parse_date(date_string):
@@ -134,7 +162,6 @@ def get_emails_route():
             if from_email := request.args.get('from'): query_parts.append(f"from:({from_email})")
             if to_email := request.args.get('to'): query_parts.append(f"to:({to_email})")
             if subject := request.args.get('subject'): query_parts.append(f"subject:({subject})")
-            # Añade aquí más filtros dinámicos si los necesitas
 
         final_query = " ".join(query_parts)
         if not final_query.strip():
@@ -143,7 +170,7 @@ def get_emails_route():
         thread_ids = fetch_thread_ids(service, final_query)
         email_details = []
         
-        for thread_id in thread_ids[:30]: # Limitar a 30 para evitar timeouts largos
+        for thread_id in thread_ids[:30]:
              try:
                 thread = service.users().threads().get(userId='me', id=thread_id).execute()
                 first_message = thread['messages'][0]
@@ -168,7 +195,6 @@ def get_emails_route():
         print(f"Error in get_emails_route: {e}")
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
-# --- FUNCIÓN PRINCIPAL QUE EXPONE LA API ---
 @https_fn.on_request(region="southamerica-west1")
 def gmail_api_handler(req: https_fn.Request) -> https_fn.Response:
     with app.request_context(req.environ):

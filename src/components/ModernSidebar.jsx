@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useGlobalContext } from '../context/GlobalContext';
 import { 
     BarChart3, Users, ClipboardCheck, Wrench, FileText, 
     Contact, Bell, Settings, LogOut 
@@ -10,9 +9,10 @@ import {
 import './ModernSidebar.css';
 
 const ModernSidebar = () => {
-    const auth = useAuth();
-    const userRole = auth.userRole;
-    const logout = auth.logout;
+    const { userRole, logout } = useAuth();
+
+    // Roles que pueden ver el enlace de Configuración
+    const canViewConfiguration = ['superadmin', 'manager'];
 
     return (
         <aside className="modern-sidebar">
@@ -30,13 +30,13 @@ const ModernSidebar = () => {
                 <NavItem to="/dashboard" icon={<BarChart3 />} label="Dashboard" />
                 <NavItem to="/dashboard/team" icon={<Users />} label="Equipo" />
                 <NavItem to="/dashboard/evaluate" icon={<ClipboardCheck />} label="Evaluar" />
-                {/* --- ENLACE ACTUALIZADO --- */}
                 <NavItem to="/dashboard/herramientas" icon={<Wrench />} label="Herramientas" />
                 <NavItem to="/dashboard/reportes-de-area" icon={<FileText />} label="Reportes" />
                 <NavItem to="/dashboard/contactos" icon={<Contact />} label="Contactos" />
-                <NavItem to="/dashboard/alertas" icon={<Bell />} label="Alertas" alertCount={3} />
+                <NavItem to="/dashboard/alertas" icon={<Bell />} alertCount={3} />
                 
-                {userRole === 'superadmin' && (
+                {/* Renderizado condicional basado en el rol del usuario */}
+                {canViewConfiguration.includes(userRole) && (
                     <NavItem to="/dashboard/configuration" icon={<Settings />} label="Configuración" />
                 )}
             </nav>

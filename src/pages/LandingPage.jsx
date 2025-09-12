@@ -1,18 +1,55 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
     const navigate = useNavigate();
 
+        // --- Estados para el formulario de contacto ---
+        const [contactForm, setContactForm] = useState({ name: '', email: '', company: '', message: '' });
+        const [isSending, setIsSending] = useState(false);
+        const [formResponse, setFormResponse] = useState({ type: '', message: '' });
+    
+        const handleInputChange = (e) => {
+            const { name, value } = e.target;
+            setContactForm(prev => ({ ...prev, [name]: value }));
+        };
+    
+
+    
+
     // --- Navigation & Action Handlers ---
     const showLogin = () => navigate('/login');
     const showRegister = () => navigate('/signup');
 
-    const handleContactForm = (event) => {
+    const handleContactForm = async (event) => {
         event.preventDefault();
-        alert('¡Mensaje enviado! En la versión real recibirías una confirmación por email.');
-        event.target.reset();
+        setIsSending(true);
+        setFormResponse({ type: '', message: '' });
+
+        try {
+            // Asegúrate de que esta URL coincida con la de tu Cloud Function
+            const response = await fetch('https://southamerica-west1-eva3-1b284.cloudfunctions.net/gmail_api_handler/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(contactForm)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Ocurrió un error al enviar el mensaje.');
+            }
+
+            setFormResponse({ type: 'success', message: '¡Mensaje enviado con éxito! Gracias por contactarnos.' });
+            setContactForm({ name: '', email: '', company: '', message: '' }); // Limpia el formulario
+
+        } catch (error) {
+            setFormResponse({ type: 'error', message: error.message });
+        } finally {
+            setIsSending(false);
+        }
     };
+
 
     const selectPlan = (plan) => {
         alert(`Has seleccionado el plan ${plan}. En la versión real serías redirigido al proceso de pago.`);
@@ -472,34 +509,34 @@ const LandingPage = () => {
                 </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-lg p-8">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-blue-800 text-sm">
-                    <strong>Demo:</strong> Este formulario es solo para demostración. En la versión real se conectaría con tu sistema de email.
-                </p>
-                </div>
-                <form onSubmit={handleContactForm}>
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
-                        <input type="text" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-                    </div>
-                </div>
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-                </div>
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
-                    <textarea rows="4" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
-                </div>
-                <button type="submit" className="w-full bg-primary hover:bg-secondary text-white py-3 rounded-lg font-semibold transition-colors">
-                    Enviar Mensaje
-                </button>
-                </form>
+                    {formResponse.message && (
+                        <div className={`rounded-lg p-4 mb-6 ${formResponse.type === 'success' ? 'bg-green-100 border border-green-200 text-green-800' : 'bg-red-100 border border-red-200 text-red-800'}`}>
+                            <p>{formResponse.message}</p>
+                        </div>
+                    )}
+                    <form onSubmit={handleContactForm}>
+                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                                <input type="text" name="name" value={contactForm.name} onChange={handleInputChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <input type="email" name="email" value={contactForm.email} onChange={handleInputChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
+                            </div>
+                        </div>
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
+                            <input type="text" name="company" value={contactForm.company} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
+                        </div>
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
+                            <textarea rows="4" name="message" value={contactForm.message} onChange={handleInputChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                        </div>
+                        <button type="submit" disabled={isSending} className="w-full bg-primary hover:bg-secondary text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400">
+                            {isSending ? 'Enviando...' : 'Enviar Mensaje'}
+                        </button>
+                    </form>
                 </div>
                 </div>
                 </div>
